@@ -13,7 +13,7 @@ The engine operates on a continuous loop of ingestion, reconciliation, and compr
 1. The Ingestion Layer (Multimodal Connectors)
 
 Sources: Gmail (API), Slack (Webhooks), ERP (Database exports), and PDFs (LLM-based OCR).
-
+ 
 Extraction: Every new piece of data is treated as an "event" containing facts, entities, and temporal context.
 
 2. The Hermes "Researcher" Agent
