@@ -1,0 +1,13 @@
+read both files in codex_mem/ and start the ingestion implementation, the data is in data/ and inside data/ ignore DATA_SUMMARY.md, create a fastapi backend and add endpoint to ingest base data, and incremental data as well, then make a curl test to ingest base data.
+
+---
+
+for pdf text extraction do not use ocr or docling, use basic lib to direct extract the text
+
+---
+
+stop downloading torch
+
+---
+
+remove it from toml
