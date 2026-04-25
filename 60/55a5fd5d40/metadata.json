@@ -3,7 +3,7 @@
   "checkpoint_id": "6055a5fd5d40",
   "strategy": "manual-commit",
   "branch": "adi_dev",
-  "checkpoints_count": 3,
+  "checkpoints_count": 13,
   "files_touched": [
     ".gitignore",
     "README.md",
@@ -26,13 +26,19 @@
       "transcript": "/60/55a5fd5d40/1/full.jsonl",
       "content_hash": "/60/55a5fd5d40/1/content_hash.txt",
       "prompt": "/60/55a5fd5d40/1/prompt.txt"
+    },
+    {
+      "metadata": "/60/55a5fd5d40/2/metadata.json",
+      "transcript": "/60/55a5fd5d40/2/full.jsonl",
+      "content_hash": "/60/55a5fd5d40/2/content_hash.txt",
+      "prompt": "/60/55a5fd5d40/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 188660,
+    "input_tokens": 695598,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 1330688,
-    "output_tokens": 11476,
-    "api_call_count": 41
+    "cache_read_tokens": 5809664,
+    "output_tokens": 34898,
+    "api_call_count": 101
   }
 }
