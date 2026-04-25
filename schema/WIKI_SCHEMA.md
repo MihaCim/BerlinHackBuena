@@ -453,3 +453,257 @@ dienstleister_id = DL-007
 - **Multi-tenant ready:** prepend `wiki/<verwalter>/<lie>/...`. Same recursive pattern.
 - **Token-cheap:** description = discovery layer, body = read on demand, anchor lookup via DuckDB index.
 - **Self-contained:** zip the LIE folder = portable backup.
+
+---
+
+## 15. Per-section metadata annotation
+
+Each major section in any wiki `.md` MAY carry an HTML-comment metadata line immediately above its `## Heading`. Optional but Linter-respected when present. HTML comments are valid markdown, hidden from any renderer.
+
+Format:
+
+```markdown
+<!-- meta: tier=1 freshness=14d token_ceiling=500 -->
+## Open Issues
+```
+
+Keys:
+
+| Key             | Type        | Default                    | Purpose                                                                  |
+|-----------------|-------------|----------------------------|--------------------------------------------------------------------------|
+| `tier`          | `0` / `1` / `2` | from §15.1 table        | retrieval priority for chunk-level fan-out                                |
+| `freshness`     | `<N>d|w|m|y` | from §15.1 table          | Linter flags `stale_facts_count++` if `last_patched > freshness`          |
+| `token_ceiling` | int          | from §15.1 table          | Linter alerts at >120% of ceiling, schedules split on recurring breach    |
+
+Linter regex: `<!--\s*meta:\s*(?:tier=(\d+)\s*)?(?:freshness=(\d+[dwmy])\s*)?(?:token_ceiling=(\d+)\s*)?-->`
+
+### 15.1 Defaults table
+
+| File type        | Section              | Tier | Freshness | Token ceiling |
+|------------------|----------------------|------|-----------|---------------|
+| LIE/index.md     | Buildings            | 0    | 30d       | 200           |
+| LIE/index.md     | Bank Accounts        | 2    | 365d      | 200           |
+| LIE/index.md     | Open Issues          | 0    | 7d        | 500           |
+| LIE/index.md     | Recent Events        | 1    | 1d        | 500           |
+| LIE/index.md     | Procedural Memory    | 1    | 180d      | 500           |
+| LIE/index.md     | Provenance           | 2    | n/a       | 500           |
+| HAUS/index.md    | Summary              | 2    | 365d      | 300           |
+| HAUS/index.md    | Units                | 2    | 90d       | 500           |
+| HAUS/index.md    | Open Issues          | 0    | 7d        | 500           |
+| HAUS/index.md    | Recent Events        | 1    | 1d        | 500           |
+| HAUS/index.md    | Contractors Active   | 1    | 90d       | 400           |
+| HAUS/index.md    | Provenance           | 2    | n/a       | 500           |
+| EH-XX.md         | Unit Facts           | 2    | 365d      | 200           |
+| EH-XX.md         | Current Tenant       | 1    | 30d       | 150           |
+| EH-XX.md         | Current Owner        | 1    | 365d      | 150           |
+| EH-XX.md         | History              | 1    | 1d        | 500           |
+| EIG-XX.md        | Contact              | 2    | 365d      | 150           |
+| EIG-XX.md        | Units Owned          | 2    | 90d       | 300           |
+| EIG-XX.md        | Payment History      | 1    | 30d       | 500           |
+| MIE-XX.md        | Tenancy              | 2    | 365d      | 200           |
+| MIE-XX.md        | Payment History      | 1    | 30d       | 500           |
+| DL-XX.md         | Services             | 2    | 365d      | 200           |
+| DL-XX.md         | Recent Invoices      | 1    | 90d       | 400           |
+| DL-XX.md         | Performance Notes    | 1    | 180d      | 300           |
+
+Override only when a specific section deviates from the file-type default. Defaults apply silently otherwise.
+
+### 15.2 Linter enforcement
+
+```sql
+-- stale_facts detection (uses metadata + last_patched from wiki_chunks)
+SELECT path, section
+FROM wiki_chunks
+WHERE last_patched < now() - INTERVAL '<freshness_value>';
+```
+
+Result counted into `stale_facts_count` of `_state.json`, factored into `health_score`.
+
+```sql
+-- token-ceiling breach detection
+SELECT path, section, length(content) AS bytes
+FROM wiki_chunks
+WHERE bytes > token_ceiling * 4 * 1.2  -- ~4 bytes per token, +20% slack
+ORDER BY bytes DESC;
+```
+
+Recurring breach (>3 consecutive nightly runs) → outer-loop trigger to propose section split.
+
+---
+
+## 16. Archive-First Protocol — two tiers
+
+Replaces the simple `_archive/` move. Granularity-matched.
+
+### Tier A — Bullet/row removal (common path)
+
+Used when: issue resolved (status `gelöst` > 60 d), tenant moved, ring-buffer prune, footnote GC.
+
+```
+1. prepend_row → 07_timeline.md (only if not already present)
+2. delete_bullet / delete_row via Patcher
+3. log entry in <LIE>/log.md: "archive(tier-a): EH-014 issue closed"
+4. gc_footnotes on next commit
+```
+
+No git tag. Reconstruction: `07_timeline.md` + git history. Cheap, frequent.
+
+### Tier B — Section / schema removal (rare)
+
+Used when: outer-loop schema mutation removes a section, structural deprecation, sensitive-data redaction.
+
+```
+STEP 1. Snapshot section to:
+        _archive/<file_path_slug>/YYYY-MM-DD_<section>_v<N>.md
+        File MUST include: section content + all referenced provenance footnotes.
+
+STEP 2. Create git tag:
+        archive/<LIE-id>/<file_path_slug>/<section>/v<N>
+
+STEP 3. Append a row to the `archive_index` section in the file's index.md
+        (or LIE/index.md if the file itself is removed).
+
+STEP 4. Append entry to <LIE>/log.md with reason + patcher_commit.
+
+STEP 5. Apply removal via Patcher.
+```
+
+Reconstruction: `git checkout <archive-tag> -- <path>` returns the exact pre-removal state.
+
+### Trigger gate
+
+- **Tier A:** automatic via prune rules and resolved-status thresholds.
+- **Tier B:** ONLY via approved `_pending_review.md` proposal (outer-loop schema mutation or explicit PM request).
+
+---
+
+## 17. Hermes self-improvement loop (pointer)
+
+Two loops:
+
+- **Inner loop** = procedural skill extraction per high-complexity ingest (`complexity_score > 5`). Async Linter job. Output: `@skill` block in `06_skills.md` + bullet in `## Procedural Memory`.
+- **Outer loop** = schema mutation when retrieval failures recur. Trigger: any `(file, section)` `failure_score ≥ 3` over rolling 30 ingests, fallback every 100 ingests. Output: proposal in `_pending_review.md`, PM-gated.
+
+Substrate: `wiki/<LIE>/_hermes_feedback.jsonl` (append-only, SQLite-importable).
+
+Per-event JSONL append is part of the canonical Patcher commit (see `schema/CLAUDE.md` step 7).
+
+**Full spec:** [`schema/HERMES_LOOP.md`](HERMES_LOOP.md).
+
+---
+
+## 18. Decisions & rejected alternatives
+
+Append-only record of architectural choices, with rejected alternatives. Provenance for the canonical schema.
+
+### 18.1 Liegenschaft root vs Building root
+
+**Decision:** Liegenschaft root. `wiki/<LIE-id>/index.md` is THE Buena deliverable. Buildings are subfolders (`02_buildings/HAUS-XX/`).
+
+**Rejected:** Building root (`wiki/<LIE>/<HAUS>/index.md` as deliverable, WEG-scoped facts duplicated per HAUS).
+
+**Why:** WEG law: ONE Verwalter / ETV / Wirtschaftsplan / BKA / Konto per Liegenschaft. Eigentümer can own units across multiple Gebäude in the same LIE. Building root would triplicate ETV/Hausgeld/Rücklage and break cross-building owner queries. Liegenschaft = canonical unit of management.
+
+**Source of rejected idea:** `template_index.md` (root file path `wiki/<LIE>/<HAUS>/index.md`).
+
+### 18.2 Bullet/row keyed patches vs section-anchor patches
+
+**Decision:** bullet/row keyed surgical patches. Section heading = location target. Patch granularity = `- 🔴 **EH-014:** ...` line or table row.
+
+**Rejected:** XML anchor markers `<!-- @section:KEY version=N -->` ... `<!-- @end:KEY -->` with section-level rewrites and version bumps.
+
+**Why:** Buena hard problem #2 = "surgical updates without destroying human edits." Section-level anchors expose the entire section to LLM rewrite — any human inline annotation inside is at risk on every patch. Bullet/row keys touch only the line matching the key. Human-authored lines (no `**ID:**` prefix) preserved verbatim. Pure regex/line ops, zero LLM at apply time.
+
+**Source of rejected idea:** `template_index.md` `<!-- @section -->` convention.
+
+### 18.3 skills.md frontmatter vs heavy state frontmatter
+
+**Decision:** `name` + `description` ONLY in frontmatter (Anthropic Agent Skills spec). State → `_state.json` sidecar.
+
+**Rejected:** inline state YAML (`id`, `parent`, `children`, `health_score`, `open_issues_count`, `hermes_nudge_counter`, `retrieval_profile`, etc.).
+
+**Why:** frontmatter must stay stable for embedding/index caches. State mutates on every ingest; inline state would dirty markdown git history with state-only commits and break cache reuse. skills.md form gives a one-call discovery primitive — agent reads frontmatter, decides if file is relevant, drills body on demand. Token-cheap.
+
+**Source of rejected idea:** `template_index.md` extensive YAML block.
+
+### 18.4 Hybrid score+fallback trigger vs mod-N counter
+
+**Decision:** outer-loop fires when any `(file, section)` failure_score ≥ 3 in rolling 30-event window. Fallback: force eval if no eval has fired in last 100 ingests.
+
+**Rejected:** `nudge_counter mod 15 == 0` periodic trigger.
+
+**Why:** mod-N is arbitrary — 15 routine ingests waste a structural eval; 15 ingests against one stuck section delays a needed fix. Score-based fires when warranted. Fallback prevents indefinite quiet-period drift.
+
+**Source of rejected idea:** `template_index.md` mod-15 nudge.
+
+### 18.5 Async Linter for skill extraction vs inline Patcher extraction
+
+**Decision:** skill extraction runs in async Linter job AFTER the Patcher commit. Patcher only appends one JSONL line atomically.
+
+**Rejected:** inline LLM skill extraction inside the Patcher commit.
+
+**Why:** ingest path must be deterministic and fast. LLM in critical path = unbounded latency + retry loops = stuck commits. Async Linter consumes JSONL, runs LLM, commits skill patch on its own.
+
+**Source of rejected idea:** `template_index.md` Step 5 of Patcher per-ingest checklist (inline `skill extraction`).
+
+### 18.6 Two-tier Archive-First vs single-tier with universal git tag
+
+**Decision:** Tier A (bullet/row, no tag, log entry only) + Tier B (section/schema, full 5-step with git tag).
+
+**Rejected:** universal Archive-First with git tag for every removal.
+
+**Why:** universal tagging would create thousands of tags per year on a busy LIE (every resolved issue, every prune). Git ref-space pollution with no reconstruction value beyond `log.md`. Tier-A removals are reconstructable from `07_timeline.md` + git history; Tier-B (rare, schema-impacting) earns the tag.
+
+**Source of rejected idea:** `template_index.md` universal Archive-First.
+
+### 18.7 `# Human Notes` h1 vs `## PM Notes` h2 boundary
+
+**Decision:** `# Human Notes` h1 boundary, sacred, Patcher refuses any write past it, stripped from any LLM read.
+
+**Rejected:** `## PM Notes` h2 boundary.
+
+**Why:** h1 = file-level boundary, unambiguous. h2 risks confusion with siblings of `## Provenance` etc. Stronger signal to both LLM (system-prompt enforced) and Linter (regex-enforced).
+
+**Source of rejected idea:** `template_index.md`.
+
+### 18.8 Ideas borrowed from `template_index.md`
+
+What we kept from the rejected proposal:
+
+| Idea                                                           | Where ported                                                |
+|----------------------------------------------------------------|-------------------------------------------------------------|
+| Per-section freshness ceiling                                  | §15 (HTML-comment annotation + defaults table)              |
+| Per-section token ceiling                                      | §15                                                         |
+| Tier 0/1/2 retrieval priority                                  | §15.1                                                       |
+| Empty-state lines                                              | `schema/VOCABULARY.md` (canonical empty-state table)         |
+| Controlled-vocabulary single source                            | `schema/VOCABULARY.md`                                      |
+| German legal mapping                                           | `schema/LEGAL_MAP.md`                                       |
+| Two-loop self-improvement architecture                         | `schema/HERMES_LOOP.md` (refined: score-based, async, two-tier archive) |
+| JSONL feedback log                                             | `_hermes_feedback.jsonl`, schema in `HERMES_LOOP.md §2`     |
+| Health score formula                                           | already aligned across both proposals (§8)                  |
+| `archive_index` section with reconstruction guarantee          | §16 Tier B                                                  |
+| `schema_evolution` version log (Karpathy format)               | bottom of this file (extend on each schema mutation)        |
+
+**Net:** `template_index.md` contributed operational rigor (vocab, freshness, legal, JSONL substrate, Archive-First protocol) on top of the WIKI_SCHEMA architectural backbone. Architecture preserved. Operational discipline upgraded.
+
+---
+
+## Template-Versionshistorie
+
+Karpathy format. `grep "^## \[" schema/WIKI_SCHEMA.md` → machine-parseable list.
+
+## [2026-04-25 18:00:00] schema_version=1.1.0
+- Initial canonical schema — BerlinHackBuena · BaC Hermes-Wiki Engine.
+- Liegenschaft root, 7 numbered subfolders, skills.md frontmatter.
+- Surgical bullet/row keyed patches.
+- DuckDB `wiki_chunks` FTS5 retrieval.
+- Inner-loop skill extraction (complexity_score > 5).
+- Single-tier `_archive/` folder.
+
+## [2026-04-25 22:00:00] schema_version=1.2.0
+- Added §15 per-section metadata annotation (tier / freshness / token_ceiling).
+- Added §16 Archive-First two-tier protocol (Tier A bullet, Tier B section + git tag).
+- Added §17 pointer to `schema/HERMES_LOOP.md` — outer loop spec finalized.
+- Added §18 Decisions & rejected alternatives (provenance vs `template_index.md`).
+- New: `schema/HERMES_LOOP.md`, `schema/VOCABULARY.md`, `schema/LEGAL_MAP.md`.
+- Per-event flow updated in `schema/CLAUDE.md` step 7 (JSONL append) and step 10–11 (inner + outer loop).

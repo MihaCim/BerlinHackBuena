@@ -167,7 +167,13 @@ If you add a pattern, drop a pattern, change a tool, or notice the rules driftin
 ## Pointers
 
 - Product spec: `PRD_Overview`
-- Schema / extraction: `schema/CLAUDE.md`, `schema/WIKI_SCHEMA.md`
+- Schema architecture: `schema/WIKI_SCHEMA.md` (canonical; see §15 per-section metadata, §16 Archive-First two tiers, §17 Hermes pointer, §18 decisions log)
+- Wiki maintainer system contract: `schema/CLAUDE.md`
+- Hermes self-improvement loop: `schema/HERMES_LOOP.md` (inner skill loop + outer schema loop, JSONL substrate)
+- Controlled vocabulary: `schema/VOCABULARY.md` (Patcher validates every keyed value against this)
+- German legal map: `schema/LEGAL_MAP.md` (WEG / BauO Bln / BGB / BetrSichV / DSGVO obligations)
 - Raw data: `data/` (read-only)
-- Plan / problem: `PLAN.md`, `PROBLEM_STATEMENT.md`, `IDEA.md`
+- Problem brief: `PROBLEM_STATEMENT.md`
+- Inspiration: `INSPIRATION.md` (Karpathy `llm-wiki` source pattern)
 - Container: `Dockerfile`, `docker-compose.yml`, `.dockerignore`
+- Decision log (incl. ideas borrowed/rejected from earlier `template_index.md` / `INDEX_README.md` proposals): `schema/WIKI_SCHEMA.md §18`. The proposal files themselves were removed once their content was absorbed.
