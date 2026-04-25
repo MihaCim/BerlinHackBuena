@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.5.6",
+  "checkpoint_id": "28177e7a9a20",
+  "strategy": "manual-commit",
+  "branch": "adi_dev",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".gitignore",
+    "AGENTS.md",
+    "README.md",
+    "app/api/v1/normalization.py",
+    "app/api/v1/router.py",
+    "app/core/config.py",
+    "app/services/normalization.py",
+    "scripts/curl_normalize_base.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/28/177e7a9a20/0/metadata.json",
+      "transcript": "/28/177e7a9a20/0/full.jsonl",
+      "content_hash": "/28/177e7a9a20/0/content_hash.txt",
+      "prompt": "/28/177e7a9a20/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 222159,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3475968,
+    "output_tokens": 8983,
+    "api_call_count": 28
+  }
+}
