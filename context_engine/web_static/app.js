@@ -15,6 +15,7 @@ const controls = [
   "replayBtn",
   "refreshBtn",
   "loadContextBtn",
+  "processIntakeBtn",
 ];
 
 function useAi() {
@@ -71,17 +72,17 @@ function renderStatus(status) {
   $("watermark").textContent = status.watermark;
   $("contextState").textContent = status.context_exists ? "ready" : "missing";
   $("patchCount").textContent = String(status.patch_count);
-  $("langgraph").textContent = status.context_exists ? "context ready" : "run bootstrap";
+  $("userEditCount").textContent = String(status.user_edits ?? 0);
+  $("intakeCount").textContent = String(status.staged_resources ?? 0);
+  $("langgraph").textContent = status.ai_configured ? `${status.ai_provider || "AI"} ready` : "deterministic mode";
   $("latestPatch").textContent = status.status_note || `latest patch: ${status.latest_patch || "none"}`;
 
   const metrics = status.metrics || {};
   const entries = [
-    ["bank tx", metrics.bank_transactions],
     ["invoices", metrics.invoices],
-    ["emails", metrics.emails],
-    ["letters", metrics.letters],
     ["topics", metrics.topics],
     ["anomalies", metrics.anomalies],
+    ["patches", status.patch_count],
   ];
   $("metricsGrid").innerHTML = entries
     .map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${value ?? "-"}</strong></div>`)
@@ -301,6 +302,27 @@ async function stageResource(event) {
   }
 }
 
+async function processIntake() {
+  $("resourceStatus").textContent = "Agent is validating staged resources against schemas...";
+  try {
+    const result = await api("/api/process-intake", {
+      method: "POST",
+      body: JSON.stringify({ use_ai: useAi() }),
+    });
+    const processed = result.processed || [];
+    const written = processed.filter((item) => item.status === "written_to_context").length;
+    const rejected = processed.filter((item) => item.status === "rejected").length;
+    $("resourceStatus").textContent = `Agent processed ${processed.length} resource(s): ${written} written, ${rejected} rejected.`;
+    log("Agentic intake completed", result);
+    await loadResources();
+    await loadContext();
+    await refreshStatus();
+  } catch (error) {
+    $("resourceStatus").textContent = error.message;
+    log("Agentic intake failed", { error: error.message });
+  }
+}
+
 async function loadResources() {
   try {
     const result = await api("/api/resources");
@@ -354,6 +376,7 @@ $("loadContextBtn").addEventListener("click", loadContext);
 $("askForm").addEventListener("submit", askQuestion);
 $("resourceForm").addEventListener("submit", stageResource);
 $("resourceFile").addEventListener("change", readResourceFile);
+$("processIntakeBtn").addEventListener("click", processIntake);
 $("editContextBtn").addEventListener("click", startContextEdit);
 $("saveContextBtn").addEventListener("click", saveContextEdit);
 $("cancelContextBtn").addEventListener("click", cancelContextEdit);

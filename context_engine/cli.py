@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 
 from .agent import run_engine
+from .ai import gemini_configured
+from .intake_agent import process_staged_intake
 from .qa import answer_from_context
-from .utils import read_json
+from .utils import read_json, read_text
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -34,6 +37,11 @@ def main(argv: list[str] | None = None) -> None:
     status.add_argument("--output", type=Path, default=Path("outputs"))
     status.add_argument("--property", default="LIE-001")
 
+    intake = sub.add_parser("process-intake", help="Validate staged resources and write accepted evidence into context.md.")
+    intake.add_argument("--output", type=Path, default=Path("outputs"))
+    intake.add_argument("--property", default="LIE-001")
+    intake.add_argument("--use-ai", action="store_true", help="Allow configured AI to assist within schema guardrails.")
+
     serve = sub.add_parser("serve", help="Start the web dashboard.")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8765)
@@ -59,12 +67,14 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "ask":
         print(answer_from_context(args.context, args.question, use_ai=args.use_ai))
     elif args.command == "status":
-        meta_path = args.output / "properties" / args.property / "context.meta.json"
-        meta = read_json(meta_path)
-        print(f"Property: {meta.get('property_id')}")
-        print(f"Watermark: {meta.get('watermark')}")
-        for key, value in (meta.get("metrics") or {}).items():
-            print(f"{key}: {value}")
+        print_status(args.output, args.property)
+    elif args.command == "process-intake":
+        result = process_staged_intake(args.output, args.property, use_ai=args.use_ai)
+        print(f"status={result.get('status')}")
+        if result.get("reason"):
+            print(f"reason={result.get('reason')}")
+        for item in result.get("processed", []):
+            print(item)
     elif args.command == "serve":
         import uvicorn
 
@@ -88,6 +98,32 @@ def print_result(state: dict) -> None:
     print(f"langgraph_available={state.get('langgraph_available')}")
     print(f"patches={state.get('patch_log', {}).get('patches_applied')}")
     print(f"metrics={metrics}")
+
+
+def print_status(output: Path, property_id: str) -> None:
+    property_dir = output / "properties" / property_id
+    meta_path = property_dir / "context.meta.json"
+    context_path = property_dir / "context.md"
+    patch_dir = property_dir / "patches"
+    intake_dir = output / "intake"
+    patch_files = sorted(patch_dir.glob("*.patch.json")) if patch_dir.exists() else []
+    meta = read_json(meta_path) if meta_path.exists() else {"property_id": property_id, "watermark": "not generated", "metrics": {}}
+    print(f"Property: {meta.get('property_id', property_id)}")
+    print(f"Watermark: {meta.get('watermark', 'not generated')}")
+    print(f"Context exists: {context_path.exists()}")
+    print(f"Latest patch: {patch_files[-1].name if patch_files else 'none'}")
+    print(f"Patch count: {len(patch_files)}")
+    print(f"Protected user edits: {count_user_blocks(context_path)}")
+    print(f"Staged resources: {len(list(intake_dir.glob('*.resource.json'))) if intake_dir.exists() else 0}")
+    print(f"AI configured: {gemini_configured()}")
+    for key, value in (meta.get("metrics") or {}).items():
+        print(f"{key}: {value}")
+
+
+def count_user_blocks(context_path: Path) -> int:
+    if not context_path.exists():
+        return 0
+    return len(re.findall(r"<user\b[^>]*>.*?</user>", read_text(context_path), flags=re.S))
 
 
 def load_local_env(path: Path) -> None:

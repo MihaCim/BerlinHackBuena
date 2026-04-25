@@ -5,23 +5,15 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .schema_registry import patch_contract
 from .utils import read_text, write_json, write_text
 
 
-PATCHABLE_SECTIONS = [
-    "agent_brief",
-    "service_providers",
-    "financial_state",
-    "open_topics",
-    "meetings_decisions",
-    "recent_communications",
-    "invoices_payments",
-    "risks_review",
-    "timeline",
-    "source_register",
-]
+PATCHABLE_SECTIONS = patch_contract()["patchable_sections"]
 
-USER_BLOCK_RE = re.compile(r"<user\b[^>]*>.*?</user>", flags=re.S)
+
+def locked_block_re() -> re.Pattern[str]:
+    return re.compile("|".join(patch_contract()["locked_patterns"]), flags=re.S)
 
 
 def apply_context_patch(current_path: Path, proposed: str, patch_log_path: Path, changed_sections: list[str] | None = None) -> dict[str, Any]:
@@ -73,11 +65,11 @@ def preserve_human_notes(current: str, proposed: str) -> str:
     current_notes = extract_human_notes(current)
     if not current_notes:
         return proposed
-    return re.sub(r"<!-- HUMAN_NOTES_START -->.*?<!-- HUMAN_NOTES_END -->", current_notes, proposed, flags=re.S)
+    return re.sub(patch_contract()["human_notes_pattern"], current_notes, proposed, flags=re.S)
 
 
 def extract_human_notes(text: str) -> str:
-    match = re.search(r"<!-- HUMAN_NOTES_START -->.*?<!-- HUMAN_NOTES_END -->", text, flags=re.S)
+    match = re.search(patch_contract()["human_notes_pattern"], text, flags=re.S)
     return match.group(0) if match else ""
 
 
@@ -100,7 +92,7 @@ def replace_section(current: str, proposed: str, section: str) -> str | None:
 
 
 def preserve_user_blocks(current_section: str, proposed_section: str) -> str:
-    blocks = [block for block in USER_BLOCK_RE.findall(current_section) if block not in proposed_section]
+    blocks = [block for block in locked_block_re().findall(current_section) if block not in proposed_section]
     if not blocks:
         return proposed_section
     return inject_user_blocks(proposed_section, blocks)

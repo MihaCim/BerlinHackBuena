@@ -64,12 +64,9 @@
             <div><span>Watermark</span><strong id="watermark">loading</strong></div>
             <div><span>Context</span><strong id="contextState">checking</strong></div>
             <div><span>Patches</span><strong id="patchCount">0</strong></div>
+            <div><span>User edits</span><strong id="userEditCount">0</strong></div>
+            <div><span>Intake</span><strong id="intakeCount">0</strong></div>
           </div>
-        </section>
-
-        <section class="rail-note">
-          <span>Human edits are treated as source of truth.</span>
-          <p>Protected blocks stay intact when the engine applies future ingestion patches.</p>
         </section>
       </aside>
 
@@ -77,66 +74,58 @@
         <header class="hero-panel">
           <div class="hero-copy">
             <p class="eyebrow">WEG Immanuelkirchstrasse 26</p>
-            <h2>A calm command center for building memory.</h2>
-            <p>
-              Convert noisy bank rows, invoices, emails, letters, and manual decisions into one trustworthy context
-              artifact that can be patched, questioned, and reviewed.
-            </p>
+            <h2>One living context for the property.</h2>
+            <p>Build, ask, and safely edit the compiled property memory.</p>
           </div>
           <div class="header-actions">
             <span id="langgraph">LangGraph ready</span>
             <span id="latestPatch">latest patch: none</span>
           </div>
-          <div class="flow-strip" aria-label="Context workflow">
-            <div><strong>01</strong><span>Ingest</span></div>
-            <div><strong>02</strong><span>Compile</span></div>
-            <div><strong>03</strong><span>Protect</span></div>
-            <div><strong>04</strong><span>Ask</span></div>
-          </div>
+          <section class="metrics-grid compact-metrics" id="metricsGrid"></section>
         </header>
 
-        <section class="metrics-grid" id="metricsGrid"></section>
-
         <section class="intake-grid">
-          <section class="feature-card intake-card">
-            <div class="panel-head">
+          <details class="feature-card intake-card">
+            <summary class="intake-summary">
               <div>
                 <p class="eyebrow">Resource Intake</p>
                 <h3>Add email, text, or file</h3>
               </div>
               <span class="pill amber">staged</span>
+            </summary>
+            <div class="intake-body">
+              <p class="helper-copy">Stage new evidence for the next ingestion pipeline update.</p>
+              <form id="resourceForm" class="stack-form">
+                <div class="split-row">
+                  <select id="resourceType" aria-label="Resource type">
+                    <option value="email">Email</option>
+                    <option value="text">Plain text</option>
+                    <option value="letter">Letter</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="bank">Bank record</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <input id="resourceName" type="text" placeholder="Name or subject" />
+                </div>
+                <label class="file-drop">
+                  <input id="resourceFile" type="file" />
+                  <span>Choose a file or paste content below</span>
+                </label>
+                <textarea
+                  id="resourceContent"
+                  rows="5"
+                  placeholder="Paste email body, notes, extracted PDF text, CSV rows, or any source text..."
+                ></textarea>
+                <input id="resourceNotes" type="text" placeholder="Optional note for the future ingestion agent" />
+                <div class="button-row">
+                  <button type="submit">Stage resource</button>
+                  <button id="processIntakeBtn" class="primary" type="button">Process staged</button>
+                </div>
+              </form>
+              <div id="resourceStatus" class="soft-status">Nothing staged in this browser session yet.</div>
+              <div id="resourceList" class="resource-list"></div>
             </div>
-            <p class="helper-copy">
-              Drop in new evidence now. For this frontend phase it is staged in outputs/intake, ready for the next
-              ingestion pipeline update.
-            </p>
-            <form id="resourceForm" class="stack-form">
-              <div class="split-row">
-                <select id="resourceType" aria-label="Resource type">
-                  <option value="email">Email</option>
-                  <option value="text">Plain text</option>
-                  <option value="letter">Letter</option>
-                  <option value="invoice">Invoice</option>
-                  <option value="bank">Bank record</option>
-                  <option value="other">Other</option>
-                </select>
-                <input id="resourceName" type="text" placeholder="Name or subject" />
-              </div>
-              <label class="file-drop">
-                <input id="resourceFile" type="file" />
-                <span>Choose a file or paste content below</span>
-              </label>
-              <textarea
-                id="resourceContent"
-                rows="5"
-                placeholder="Paste email body, notes, extracted PDF text, CSV rows, or any source text..."
-              ></textarea>
-              <input id="resourceNotes" type="text" placeholder="Optional note for the future ingestion agent" />
-              <button type="submit">Stage resource</button>
-            </form>
-            <div id="resourceStatus" class="soft-status">Nothing staged in this browser session yet.</div>
-            <div id="resourceList" class="resource-list"></div>
-          </section>
+          </details>
         </section>
 
         <section class="work-grid">

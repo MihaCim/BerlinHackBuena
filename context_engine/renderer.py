@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from typing import Any
 
+from .schema_registry import render_contract
 from .utils import money
 
 
@@ -15,22 +16,33 @@ def render_context(data: dict[str, Any], llm_advice: str = "") -> str:
         render_frontmatter(prop, data["watermark"], now),
         f"# Property Context: {prop.get('name', 'Unknown Property')}",
         render_human_notes(),
-        section("agent_brief", "Agent Brief", render_agent_brief(data, llm_advice)),
-        section("property_snapshot", "Property Snapshot", render_property_snapshot(master)),
-        section("buildings_units", "Buildings And Units", render_buildings_units(master)),
-        section("owners", "Owners", render_owners(master)),
-        section("tenants", "Tenants", render_tenants(master)),
-        section("service_providers", "Service Providers", render_service_providers(master, data)),
-        section("financial_state", "Financial State", render_financial_state(data)),
-        section("open_topics", "Open Operational Topics", render_topics(data)),
-        section("meetings_decisions", "Meetings And Decisions", render_meetings(data)),
-        section("recent_communications", "Recent Communications", render_recent_communications(data)),
-        section("invoices_payments", "Invoices And Payments", render_invoices(data)),
-        section("risks_review", "Risks, Anomalies, And Review Items", render_anomalies(data)),
-        section("timeline", "Timeline", render_timeline(data)),
-        section("source_register", "Source Register", render_source_register(data)),
     ]
+    for spec in render_contract()["sections"]:
+        sections.append(section(spec["anchor"], spec["title"], render_section_body(spec["renderer"], data, llm_advice)))
     return "\n\n".join(part.rstrip() for part in sections) + "\n"
+
+
+def render_section_body(renderer_name: str, data: dict[str, Any], llm_advice: str = "") -> str:
+    master = data["master"]
+    renderers = {
+        "render_agent_brief": lambda: render_agent_brief(data, llm_advice),
+        "render_property_snapshot": lambda: render_property_snapshot(master),
+        "render_buildings_units": lambda: render_buildings_units(master),
+        "render_owners": lambda: render_owners(master),
+        "render_tenants": lambda: render_tenants(master),
+        "render_service_providers": lambda: render_service_providers(master, data),
+        "render_financial_state": lambda: render_financial_state(data),
+        "render_topics": lambda: render_topics(data),
+        "render_meetings": lambda: render_meetings(data),
+        "render_recent_communications": lambda: render_recent_communications(data),
+        "render_invoices": lambda: render_invoices(data),
+        "render_anomalies": lambda: render_anomalies(data),
+        "render_timeline": lambda: render_timeline(data),
+        "render_source_register": lambda: render_source_register(data),
+    }
+    if renderer_name not in renderers:
+        return f"Renderer `{renderer_name}` is not available."
+    return renderers[renderer_name]()
 
 
 def render_frontmatter(prop: dict[str, Any], watermark: str, generated_at: str) -> str:
@@ -299,4 +311,3 @@ def render_source_register(data: dict[str, Any]) -> str:
 
 def yes_no(value: Any) -> str:
     return "yes" if bool(value) else "no"
-

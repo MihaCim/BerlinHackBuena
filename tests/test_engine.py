@@ -7,6 +7,7 @@ from pathlib import Path
 from context_engine.agent import run_engine
 from context_engine.parsers import build_context_data
 from context_engine.qa import answer_from_context
+from context_engine.schema_registry import parser_contract, patch_contract, render_contract
 from context_engine.utils import read_text
 
 
@@ -15,6 +16,15 @@ DATA = ROOT / "data"
 
 
 class ContextEngineTests(unittest.TestCase):
+    def test_schema_contracts_drive_core_pipeline(self) -> None:
+        parser = parser_contract()
+        render = render_contract()
+        patch = patch_contract()
+        self.assertIn("emails", parser["families"])
+        self.assertEqual(render["sections"][0]["anchor"], "agent_brief")
+        self.assertIn("financial_state", patch["patchable_sections"])
+        self.assertIn("recent_communications", patch["patchable_sections"])
+
     def test_build_context_data_counts(self) -> None:
         data = build_context_data(DATA)
         self.assertEqual(data["master"]["liegenschaft"]["id"], "LIE-001")

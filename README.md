@@ -1,54 +1,49 @@
-`# BerlinHackBuena
+# BerlinHackBuena
 
-Context management project for a Berlin hackathon.
+Buena Context Engine is a hackathon prototype for turning scattered property-management data into one durable, editable context artifact.
 
-## Overview
+It ingests bank rows, invoices, emails, letters, master data, and incremental updates, then writes a canonical `context.md` for one property. The dashboard lets you run the pipeline, ask questions, stage new resources, and safely edit the compiled artifact with protected `<user>` blocks.
 
-BerlinHackBuena is an early-stage hackathon project focused on turning scattered business context into usable, searchable, and explainable information. The repository currently contains a sample data set under `hackathon/` with documents such as invoices, emails, letters, bank data, master data, and incremental updates.
+## What Works Now
 
-The goal is to build a system that can ingest these sources, extract relevant facts, preserve provenance, and help users answer operational questions with the right context.
+- Compile a base property context from `data/`.
+- Apply incremental day folders as patch updates.
+- Replay all deltas.
+- Ask natural-language questions against the compiled context.
+- Use Academic Cloud or Gemini for optional AI synthesis.
+- Edit `context.md` directly from the frontend.
+- Preserve human edits inside `<user>...</user>` blocks during future patches.
+- Stage new resources under `outputs/intake/`.
+- Process staged resources with a schema-guided intake agent.
+- Reject obvious spam or invalid resources without changing `context.md`.
+- Write accepted resources into the correct context section with protected `AGENT_INTAKE` blocks.
+- See readiness signals for context state, patch count, protected user edits, staged resources, and AI configuration.
 
 ## Repository Structure
 
 ```text
 .
-├── hackathon/
-│   ├── bank/          # Bank-related source data
-│   ├── briefe/        # Letters and written correspondence
-│   ├── emails/        # Email source files
-│   ├── incremental/   # Incremental data drops or updates
-│   ├── rechnungen/    # Invoice PDFs
-│   └── stammdaten/    # Master data
-└── README.md
+|-- context_engine/        # Python package, CLI, LangGraph workflow, web app
+|-- data/                  # Source data: bank, emails, invoices, letters, master data, deltas
+|-- outputs/               # Generated local artifacts, ignored by git
+|-- schemas/               # Markdown schemas that guide agentic validation and writes
+|-- tests/                 # Unit and web API tests
+|-- IMPLEMENTATION.md      # Implementation notes
+|-- PROBLEM_STATEMENT.md   # Challenge/problem description
+|-- prompt.md              # Detailed Lovable prompt for recreating the frontend
+|-- requirements.txt       # Python dependencies
+`-- pyproject.toml
 ```
 
-## Project Goals
-
-- Ingest structured and unstructured business documents.
-- Extract entities, dates, amounts, relationships, and document metadata.
-- Link information across emails, invoices, bank records, letters, and master data.
-- Provide a context layer that supports reliable search, retrieval, and question answering.
-- Keep source references available so answers can be traced back to original documents.
-
-## Initial Ideas
-
-- Document parsing pipeline for PDFs, emails, and tabular files.
-- Normalized data model for contacts, companies, invoices, payments, messages, and events.
-- Vector and keyword search over extracted content.
-- Context API for retrieving the most relevant facts and source snippets.
-- Simple user interface for exploring documents and asking questions.
-
-## Getting Started
-
-The repository now includes a runnable LangGraph-powered Python context engine.
+## Setup
 
 Install dependencies:
 
-```bash
+```powershell
 python -m pip install -r requirements.txt
 ```
 
-Create a local `.env` file in the repo root and paste your Academic Cloud key:
+Create `.env` in the repo root:
 
 ```env
 AI_PROVIDER=academiccloud
@@ -57,91 +52,129 @@ ACADEMIC_CLOUD_BASE_URL=https://chat-ai.academiccloud.de/v1
 ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct
 ```
 
-The CLI auto-loads `.env` from the working directory, so you do not need to export it manually every time.
+AI is optional. Without a key, the engine still runs deterministically.
 
-Run tests:
-
-```bash
-python -m pytest -q
-```
-
-Compile the base context:
-
-```bash
-python -m context_engine bootstrap --source data --output outputs
-```
-
-Apply a single incremental day:
-
-```bash
-python -m context_engine apply-delta --source data --output outputs --delta data/incremental/day-01
-```
-
-Replay all incremental days:
-
-```bash
-python -m context_engine replay-deltas --source data --output outputs
-```
-
-Ask from the compiled markdown context:
-
-```bash
-python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What unresolved financial anomalies exist?"
-```
-
-Ask with AI synthesis enabled:
-
-```bash
-python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What should a property manager review first today?" --use-ai
-```
-
-Show current output status:
-
-```bash
-python -m context_engine status --output outputs
-```
-
-AI synthesis is optional. Set `ACADEMIC_CLOUD_API_KEY` and pass `--use-ai` to enable Academic Cloud for advisory notes and natural-language answers.
-The tested default model is `llama-3.3-70b-instruct`; you can override it with `ACADEMIC_CLOUD_MODEL` in `.env`.
+## Run The App
 
 Start the web dashboard:
 
-```bash
+```powershell
 python -m context_engine serve --host 127.0.0.1 --port 8765
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8765
 ```
 
-Manual test flow:
+Recommended manual flow:
 
-```bash
-python -m context_engine bootstrap --source data --output outputs --use-ai
-python -m context_engine apply-delta --source data --output outputs --delta data/incremental/day-01 --use-ai
-python -m context_engine replay-deltas --source data --output outputs --use-ai
-python -m context_engine status --output outputs
+1. Click `Bootstrap context`.
+2. Ask a question in the `Ask` card.
+3. Open `Resource Intake` and stage a sample email or text.
+4. Scroll to `Artifact`.
+5. Click `Edit context`.
+6. Change a line in `context.md`.
+7. Click `Save with <user> tags`.
+8. Apply a delta and confirm the user edit remains in the artifact.
+
+## CLI Usage
+
+Compile the base context:
+
+```powershell
+python -m context_engine bootstrap --source data --output outputs
+```
+
+Apply one incremental day:
+
+```powershell
+python -m context_engine apply-delta --source data --output outputs --delta data/incremental/day-01
+```
+
+Replay all incremental days:
+
+```powershell
+python -m context_engine replay-deltas --source data --output outputs
+```
+
+Ask from the compiled context:
+
+```powershell
 python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What unresolved financial anomalies exist?"
 ```
 
-## Data Notes
+Use AI synthesis:
 
-The `hackathon/` directory appears to contain hackathon data and should be treated as project input. Avoid committing generated indexes, embeddings, temporary parse outputs, or local databases unless the team explicitly decides they belong in version control.
+```powershell
+python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What should a property manager review first today?" --use-ai
+```
+
+Show current status:
+
+```powershell
+python -m context_engine status --output outputs
+```
+
+Validate staged resources and write accepted evidence into `context.md`:
+
+```powershell
+python -m context_engine process-intake --output outputs
+```
+
+Status includes:
+
+- Watermark
+- Context existence
+- Latest patch
+- Patch count
+- Protected user edit count
+- Staged resource count
+- AI configured state
+- Extracted metrics
+
+## Agentic Intake Schemas
+
+The intake agent reads markdown schemas from `schemas/`:
+
+- `RESOURCE_VALIDATION_SCHEMA.md`: decides whether a staged resource is valid or spam.
+- `CONTEXT_WRITE_SCHEMA.md`: maps valid resources to allowed `context.md` sections.
+- `INGESTION_PROCESS_SCHEMA.md`: defines the bounded end-to-end process.
+- `PARSER_SCHEMA.md`: defines source families, filename patterns, entity patterns, and email classification/score rules.
+- `RENDER_SCHEMA.md`: defines `context.md` section order, anchors, titles, and renderer tool names.
+- `PATCH_SCHEMA.md`: defines patchable sections and locked block patterns.
+
+This keeps the feature agentic but controlled. The agent can validate, route, summarize, and write accepted resources, but it cannot edit arbitrary files or remove protected user context.
+
+The parser, renderer, and patcher still use deterministic Python executors for safety and repeatability, but their task contracts now come from markdown schemas instead of being buried only in code.
+
+## Testing
+
+Run:
+
+```powershell
+python -m pytest -q -p no:cacheprovider
+```
+
+The tests cover:
+
+- Status before generation
+- Bootstrap and ask API flow
+- Direct artifact editing with protected `<user>` tags
+- Preservation of user edits after delta patching
+- Resource intake staging
+
+## Current Limitations
+
+- Resource intake now writes accepted staged text into `context.md`; deeper native parsing for PDFs/binary files remains a future phase.
+- PDF extraction is represented by the existing sample parsers and source data assumptions.
+- The app currently targets property `LIE-001`.
+- Human edits are intentionally visible in `context.md` so AI and future ingestion can treat them as authoritative.
 
 ## Development Notes
 
-Add stack-specific setup instructions here once the project has a runtime, for example:
-
-```bash
-# install dependencies
-
-# run tests
-
-# start the app
-```
-
-## License
-
-License not specified yet.
+- Do not commit `.env`.
+- Do not commit generated `outputs/`.
+- Keep protected `<user>` blocks intact when changing patch logic.
+- Prefer deterministic behavior first; AI should advise or summarize, not become the source of truth.

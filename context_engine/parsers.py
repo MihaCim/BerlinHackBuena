@@ -8,13 +8,20 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from .schema_registry import parser_contract
 from .utils import compact, normalize_iban, parse_float, read_csv, read_json, read_text, rel, safe_date
 
 
-INVOICE_RE = re.compile(r"(?P<date>\d{8})_DL-(?P<vendor>\d{3})_INV-(?P<inv>\d{5})\.pdf$", re.I)
-INVOICE_DUP_RE = re.compile(r"(?P<date>\d{8})_DL-(?P<vendor>\d{3})_INV-DUP-(?P<inv>\d{5})\.pdf$", re.I)
-LETTER_RE = re.compile(r"(?P<date>\d{8})_(?P<kind>[a-z_]+)_LTR-(?P<num>\d{4})\.pdf$", re.I)
-ENTITY_RE = re.compile(r"\b(?:EH|EIG|MIE|DL|INV|LTR)-\d{3,5}\b", re.I)
+def schema_family(name: str) -> dict[str, str]:
+    return parser_contract()["families"][name]
+
+
+def schema_pattern(name: str) -> re.Pattern[str]:
+    return re.compile(schema_family(name)["file_pattern"], re.I)
+
+
+def entity_re() -> re.Pattern[str]:
+    return re.compile(parser_contract()["entity_pattern"], re.I)
 
 
 def load_master(source_root: Path) -> dict[str, Any]:
@@ -40,18 +47,19 @@ def display_party(row: dict[str, Any]) -> str:
 
 def load_bank_rows(source_root: Path, delta_dirs: list[Path] | None = None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    base = source_root / "bank" / "bank_index.csv"
+    family = schema_family("bank")
+    base = source_root / family["base_path"]
     if base.exists():
         rows.extend(_normalize_bank_rows(read_csv(base), base, source_root))
     for delta_dir in delta_dirs or []:
-        path = delta_dir / "bank" / "bank_index.csv"
+        path = delta_dir / family["delta_path"]
         if path.exists():
             rows.extend(_normalize_bank_rows(read_csv(path), path, source_root))
     return rows
 
 
 def load_delta_bank_rows(source_root: Path, delta_dir: Path) -> list[dict[str, Any]]:
-    path = delta_dir / "bank" / "bank_index.csv"
+    path = delta_dir / schema_family("bank")["delta_path"]
     return _normalize_bank_rows(read_csv(path), path, source_root) if path.exists() else []
 
 
@@ -79,7 +87,8 @@ def _normalize_bank_rows(rows: list[dict[str, str]], path: Path, root: Path) -> 
 def load_invoice_rows(source_root: Path, delta_dirs: list[Path] | None = None) -> list[dict[str, Any]]:
     by_id: dict[str, dict[str, Any]] = {}
     duplicates: Counter[str] = Counter()
-    for path in sorted((source_root / "rechnungen").glob("**/*.pdf")):
+    family = schema_family("invoices")
+    for path in sorted((source_root / family["base_path"]).glob("**/*.pdf")):
         invoice = invoice_from_pdf_path(path, source_root)
         if invoice:
             duplicates[invoice["id"]] += 1
@@ -88,7 +97,7 @@ def load_invoice_rows(source_root: Path, delta_dirs: list[Path] | None = None) -
             elif "duplicate_file" not in by_id[invoice["id"]]["error_types"]:
                 by_id[invoice["id"]]["error_types"].append("duplicate_file")
     for delta_dir in delta_dirs or []:
-        index = delta_dir / "rechnungen_index.csv"
+        index = delta_dir / family["delta_path"]
         if index.exists():
             for row in read_csv(index):
                 invoice_id = row.get("id", "")
@@ -115,7 +124,7 @@ def load_invoice_rows(source_root: Path, delta_dirs: list[Path] | None = None) -
 
 
 def load_delta_invoice_rows(source_root: Path, delta_dir: Path) -> list[dict[str, Any]]:
-    index = delta_dir / "rechnungen_index.csv"
+    index = delta_dir / schema_family("invoices")["delta_path"]
     invoices: list[dict[str, Any]] = []
     if not index.exists():
         return invoices
@@ -143,8 +152,8 @@ def load_delta_invoice_rows(source_root: Path, delta_dir: Path) -> list[dict[str
 
 
 def invoice_from_pdf_path(path: Path, root: Path) -> dict[str, Any] | None:
-    match = INVOICE_RE.search(path.name)
-    duplicate_match = INVOICE_DUP_RE.search(path.name)
+    match = schema_pattern("invoices").search(path.name)
+    duplicate_match = schema_pattern("invoice_duplicates").search(path.name)
     if not match and not duplicate_match:
         return None
     match = match or duplicate_match
@@ -171,8 +180,10 @@ def invoice_from_pdf_path(path: Path, root: Path) -> dict[str, Any] | None:
 
 def load_letters(source_root: Path) -> list[dict[str, Any]]:
     letters = []
-    for path in sorted((source_root / "briefe").glob("**/*.pdf")):
-        match = LETTER_RE.search(path.name)
+    family = schema_family("letters")
+    pattern = schema_pattern("letters")
+    for path in sorted((source_root / family["base_path"]).glob("**/*.pdf")):
+        match = pattern.search(path.name)
         if not match:
             continue
         letter_id = f"LTR-{match.group('num')}"
@@ -191,13 +202,14 @@ def load_letters(source_root: Path) -> list[dict[str, Any]]:
 
 def load_emails(source_root: Path, delta_dirs: list[Path] | None = None) -> list[dict[str, Any]]:
     indexed: dict[str, dict[str, str]] = {}
-    search_roots = [source_root / "emails"]
+    family = schema_family("emails")
+    search_roots = [source_root / family["base_path"]]
     for delta_dir in delta_dirs or []:
-        idx = delta_dir / "emails_index.csv"
+        idx = delta_dir / family["index_file"]
         if idx.exists():
             for row in read_csv(idx):
                 indexed[row.get("filename", "")] = row
-        search_roots.append(delta_dir / "emails")
+        search_roots.append(delta_dir / family["delta_path"])
 
     emails = []
     for search_root in search_roots:
@@ -223,7 +235,7 @@ def load_emails(source_root: Path, delta_dirs: list[Path] | None = None) -> list
                     "error_types": index_row.get("error_types") or "",
                     "body": body,
                     "summary": compact(body, 220),
-                    "entities": sorted(set(match.upper() for match in ENTITY_RE.findall(body + " " + parsed["subject"]))),
+                    "entities": sorted(set(match.upper() for match in entity_re().findall(body + " " + parsed["subject"]))),
                     "score": score_email(category, parsed["subject"], body),
                     "source_id": f"S:email:{email_id}",
                     "source_path": rel(path, source_root),
@@ -234,12 +246,13 @@ def load_emails(source_root: Path, delta_dirs: list[Path] | None = None) -> list
 
 def load_delta_emails(source_root: Path, delta_dir: Path) -> list[dict[str, Any]]:
     indexed: dict[str, dict[str, str]] = {}
-    idx = delta_dir / "emails_index.csv"
+    family = schema_family("emails")
+    idx = delta_dir / family["index_file"]
     if idx.exists():
         for row in read_csv(idx):
             indexed[row.get("filename", "")] = row
     emails = []
-    search_root = delta_dir / "emails"
+    search_root = delta_dir / family["delta_path"]
     if not search_root.exists():
         return emails
     for path in sorted(search_root.glob("**/*.eml")):
@@ -262,7 +275,7 @@ def load_delta_emails(source_root: Path, delta_dir: Path) -> list[dict[str, Any]
                 "error_types": index_row.get("error_types") or "",
                 "body": body,
                 "summary": compact(body, 220),
-                "entities": sorted(set(match.upper() for match in ENTITY_RE.findall(body + " " + parsed["subject"]))),
+                "entities": sorted(set(match.upper() for match in entity_re().findall(body + " " + parsed["subject"]))),
                 "score": score_email(category, parsed["subject"], body),
                 "source_id": f"S:email:{email_id}",
                 "source_path": rel(path, source_root),
@@ -330,6 +343,10 @@ def infer_direction(sender: str) -> str:
 
 def classify_email(subject: str, body: str = "") -> str:
     text = f"{subject} {body}".lower()
+    for rule in parser_contract()["classification"]:
+        if any(keyword in text for keyword in rule["keywords"]):
+            return rule["category"]
+    return "allgemein"
     rules = [
         ("rechtlich", ["einspruch", "beschluss", "kuendigung", "kündigung", "mahnung", "recht", "frist"]),
         ("mieter/kaution", ["kaution"]),
@@ -347,6 +364,10 @@ def classify_email(subject: str, body: str = "") -> str:
 def score_email(category: str, subject: str, body: str) -> float:
     text = f"{category} {subject} {body}".lower()
     score = 0.35
+    for rule in parser_contract()["score_rules"]:
+        if any(keyword in text for keyword in rule["keywords"]):
+            score += rule["boost"]
+    return max(0.0, min(1.0, round(score, 2)))
     if any(word in text for word in ("recht", "einspruch", "kuendigung", "kündigung", "frist", "mahnung")):
         score += 0.35
     if any(word in text for word in ("rechnung", "kaution", "zahlung", "sonderumlage", "hausgeld")):

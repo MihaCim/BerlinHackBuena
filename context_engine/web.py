@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import difflib
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .agent import run_engine
+from .ai import gemini_configured
 from .cli import load_local_env
+from .intake_agent import process_staged_intake
 from .qa import answer_from_context
 from .utils import read_json, read_text, write_json, write_text
 
@@ -45,6 +48,10 @@ class ResourceRequest(BaseModel):
     kind: str = "text"
     content: str
     notes: str = ""
+
+
+class ProcessIntakeRequest(BaseModel):
+    use_ai: bool = False
 
 
 def create_app(source_root: Path | str = Path("data"), output_root: Path | str = Path("outputs")) -> FastAPI:
@@ -165,6 +172,13 @@ def create_app(source_root: Path | str = Path("data"), output_root: Path | str =
         write_json(record_path, record)
         return {"status": "staged", "resource": record}
 
+    @app.post("/api/process-intake")
+    def process_intake(payload: ProcessIntakeRequest) -> dict[str, Any]:
+        result = process_staged_intake(app.state.output_root, PROPERTY_ID, use_ai=payload.use_ai)
+        if result.get("status") == "blocked":
+            raise HTTPException(status_code=404, detail=result.get("reason", "Run bootstrap first."))
+        return result
+
     return app
 
 
@@ -177,6 +191,7 @@ def read_status(output_root: Path) -> dict[str, Any]:
     meta_path = property_dir / "context.meta.json"
     context_path = property_dir / "context.md"
     patch_dir = property_dir / "patches"
+    intake_dir = output_root / "intake"
     patch_files = sorted(patch_dir.glob("*.patch.json")) if patch_dir.exists() else []
     if meta_path.exists():
         meta = read_json(meta_path)
@@ -197,6 +212,10 @@ def read_status(output_root: Path) -> dict[str, Any]:
         "patch_count": len(patch_files),
         "latest_patch": latest_patch,
         "status_note": status_note,
+        "user_edits": count_user_blocks(context_path),
+        "staged_resources": len(list(intake_dir.glob("*.resource.json"))) if intake_dir.exists() else 0,
+        "ai_configured": gemini_configured(),
+        "ai_provider": os.getenv("AI_PROVIDER", "academiccloud").strip() or "academiccloud",
     }
 
 
@@ -263,3 +282,9 @@ def sanitize_attr(value: str) -> str:
 def slugify(value: str) -> str:
     slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip().lower()).strip("-")
     return slug[:80] or "resource"
+
+
+def count_user_blocks(context_path: Path) -> int:
+    if not context_path.exists():
+        return 0
+    return len(re.findall(r"<user\b[^>]*>.*?</user>", read_text(context_path), flags=re.S))
