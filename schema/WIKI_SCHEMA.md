@@ -2,7 +2,7 @@
 
 Living-context wiki for German WEG property management. Pure Karpathy `llm-wiki` pattern + Anthropic Agent Skills (skills.md) frontmatter discipline + Buena's "single Context Markdown File per property" mandate.
 
-**One property = one folder rooted at `wiki/<LIE-id>/`. Entry file = `<LIE-id>/index.md`.** Sub-mds inside the folder hold specialized depth. Markdown is canonical at every storage tier; DuckDB sidecars are derived caches.
+**One property = one folder rooted at `output/<LIE-id>/`. Entry file = `<LIE-id>/building.md`.** Sub-mds inside the folder hold specialized depth. Markdown is canonical at every storage tier; database sidecars are derived caches.
 
 ---
 
@@ -22,7 +22,7 @@ Therefore Buena's "property" = Liegenschaft. Buildings are subordinate. Layout r
 ## 2. Directory layout
 
 ```
-wiki/
+output/
 ├── index.md                          # global catalog (multi-WEG ready)
 ├── log.md                            # global event log
 ├── schema/
@@ -31,7 +31,7 @@ wiki/
 │   └── skills.md                     # extracted skills (skills.md form)
 │
 └── LIE-001/                          # ★ one property = one folder
-    ├── index.md                      # ★ THE Context.md (Buena deliverable)
+    ├── building.md                   # ★ THE Context Markdown File (Buena deliverable)
     ├── _state.json                   # sidecar state (last_patched, counts)
     ├── log.md                        # property-scoped event log
     ├── _pending_review.md            # contradictions awaiting PM
@@ -78,7 +78,7 @@ wiki/
 
 Numbered prefixes (`01_..07_`) force natural reading order in file explorers and align with importance ranking.
 
-Multi-tenant production tier prepends customer prefix: `wiki/<verwalter>/LIE-001/...`. Same recursive pattern.
+Multi-tenant production tier prepends customer prefix: `output/<verwalter>/LIE-001/...`. Same recursive pattern.
 
 ---
 
@@ -91,7 +91,7 @@ Every wiki .md uses **only** `name` + `description` per Anthropic Agent Skills s
 
 State + identity + hierarchy live in the **`_state.json` sidecar** and inside body content, not in frontmatter. Frontmatter stays tiny + stable.
 
-### Example — `LIE-001/index.md`
+### Example — `LIE-001/building.md`
 
 ```yaml
 ---
@@ -142,7 +142,7 @@ description: Procedure for heating outages after 18:00 or weekends in any HAUS o
 
 No XML anchor markers. No bespoke syntax. Pure Karpathy: standard markdown headings define sections. Patcher targets sections by heading text.
 
-### Body skeleton — `LIE-001/index.md`
+### Body skeleton — `LIE-001/building.md`
 
 ```markdown
 ---
@@ -190,10 +190,10 @@ description: <as above>
 
 ## Provenance
 
-[^EMAIL-12044]: normalize/eml/2026-04/EMAIL-12044.md
-[^INV-02103]: normalize/pdf/2026-04/INV-02103.md
-[^LTR-0128]: normalize/pdf/2026-04/LTR-0128.md
-[^LTR-0089]: normalize/pdf/2025-03/LTR-0089.md
+[^EMAIL-12044]: normalize/incremental/day-NN/emails/2026-04/20260425_143200_EMAIL-12044.md
+[^INV-02103]: normalize/incremental/day-NN/rechnungen/2026-04/20260423_DL-007_INV-02103.md
+[^LTR-0128]: normalize/incremental/day-NN/briefe/2026-04/20260420_mieterhoehung_LTR-0128.md
+[^LTR-0089]: normalize/base/briefe/2025-03/20250315_bka_LTR-0089.md
 
 # Human Notes
 
@@ -236,7 +236,7 @@ Append-only at top of table. Prune oldest beyond max=50. Older rows → `07_time
 ### Footnotes
 
 ```markdown
-[^EMAIL-12044]: normalize/eml/2026-04/EMAIL-12044.md
+[^EMAIL-12044]: normalize/incremental/day-NN/emails/2026-04/20260425_143200_EMAIL-12044.md
 ```
 
 Patcher rule: upsert by `[^KEY]:` prefix. Idempotent. GC drops entries with `ref_count == 0`.
@@ -321,7 +321,7 @@ The wiki must stay token-efficient.
 - Per-tenant payment history capped at 12 months. Older → archive.
 - No redundant cross-restating. Detail lives in the dedicated entity page; index references.
 - Footnote provenance once per file, in `## Provenance` section only.
-- Truncate quotes ≤200 chars. Full text remains in `normalize/eml/...`.
+- Truncate quotes ≤200 chars. Full text remains in `normalize/...`.
 - Target sizes: `index.md` ≤30 KB. Entity pages ≤15 KB. Concept pages ≤30 KB. Hard cap 50 KB any file → archive overflow.
 
 If a patch would push a file over target, run a compaction pass first: archive stale rows, regenerate ring buffers, drop unreferenced footnotes.
@@ -348,7 +348,7 @@ To make ingestion fast + deterministic, the same DuckDB instance running bank/in
 
 ```sql
 CREATE TABLE wiki_chunks (
-  path          VARCHAR,           -- wiki/LIE-001/02_buildings/HAUS-12/index.md
+  path          VARCHAR,           -- output/LIE-001/02_buildings/HAUS-12/index.md
   property_id   VARCHAR,           -- LIE-001
   section       VARCHAR,           -- "Open Issues"
   line_start    INT,
@@ -422,34 +422,34 @@ Agents never guess paths. Pure function:
 
 ```
 property_id = LIE-001
-→ entry:    wiki/LIE-001/index.md
-→ state:    wiki/LIE-001/_state.json
+→ entry:    output/LIE-001/building.md
+→ state:    output/LIE-001/_state.json
 
 building_id = HAUS-12 (parent: LIE-001)
-→ wiki/LIE-001/02_buildings/HAUS-12/index.md
+→ output/LIE-001/02_buildings/HAUS-12/index.md
 
 unit_id = EH-014 (in HAUS-12)
-→ wiki/LIE-001/02_buildings/HAUS-12/units/EH-014.md
+→ output/LIE-001/02_buildings/HAUS-12/units/EH-014.md
 
 owner_id = EIG-014 (cross-building)
-→ wiki/LIE-001/03_people/eigentuemer/EIG-014.md
+→ output/LIE-001/03_people/eigentuemer/EIG-014.md
 
 tenant_id = MIE-014
-→ wiki/LIE-001/03_people/mieter/MIE-014.md
+→ output/LIE-001/03_people/mieter/MIE-014.md
 
 dienstleister_id = DL-007
-→ wiki/LIE-001/04_dienstleister/DL-007.md
+→ output/LIE-001/04_dienstleister/DL-007.md
 ```
 
 ---
 
 ## 14. Why this works
 
-- **Buena spec:** "single Context Markdown File per property" → `LIE-001/index.md`. Folder = its imports.
+- **Buena spec:** "single Context Markdown File per property" → `LIE-001/building.md`. Folder = its imports.
 - **Surgical patches:** keyed bullets + table rows = bullet-level edits, ~7 lines changed per ingest, never destroys human edits.
 - **Karpathy purity:** entity pages + concept pages + log + index + schema dir, with skills.md frontmatter on every file.
 - **Skills.md purity:** only `name` + `description` in frontmatter, ≤1024 chars description, third-person voice, progressive disclosure.
 - **WEG law fit:** Liegenschaft is the property; cross-building owners modeled correctly; bank/finances/ETV at LIE root.
-- **Multi-tenant ready:** prepend `wiki/<verwalter>/<lie>/...`. Same recursive pattern.
+- **Multi-tenant ready:** prepend `output/<verwalter>/<lie>/...`. Same recursive pattern.
 - **Token-cheap:** description = discovery layer, body = read on demand, anchor lookup via DuckDB index.
 - **Self-contained:** zip the LIE folder = portable backup.

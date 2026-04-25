@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -23,10 +23,13 @@ class Settings(BaseSettings):
     env: Literal["dev", "staging", "prod"] = "dev"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
+    repo_root: Path = Field(default=REPO_ROOT)
     data_dir: Path = Field(default=REPO_ROOT / "data")
     normalize_dir: Path = Field(default=REPO_ROOT / "normalize")
     output_dir: Path = Field(default=REPO_ROOT / "output")
     ingestion_db_path: Path = Field(default=REPO_ROOT / ".local" / "ingestion.sqlite3")
+    context_agent_model: str = "google_genai:gemini-flash-latest"
+    gemini_api_key: SecretStr | None = None
 
 
 @lru_cache(maxsize=1)

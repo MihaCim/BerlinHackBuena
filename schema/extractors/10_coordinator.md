@@ -11,7 +11,7 @@ Goal: produce ONE `PatchPlan` for the Patcher, plus a review queue. You do not r
 3. Link invoices to bank transactions via `reference_id`, `invoice_number`, or amount+date+vendor match.
 4. Link emails/letters to issues, invoices, owners, tenants, vendors, properties.
 5. Resolve every op's target entities through the stammdaten registry. Unresolved → drop op, raise `review_item`.
-6. Conflict scan: for each `upsert_bullet` / `upsert_row`, look up the existing keyed line via `query_wiki(entity_id)` over the `wiki_chunks` DuckDB index. Contradicting fact → drop op, append to `_pending_review.md` (output as `review_item`).
+6. Conflict scan: for each `upsert_bullet` / `upsert_row`, look up the existing keyed line via context index or filesystem search over `output/`. Contradicting fact → drop op, append to `_pending_review.md` (output as `review_item`).
 7. Compose ring-buffer ops: `prepend_row` on `Recent Events` and `prune_ring(max=50)`.
 8. Compose footnote ops: every new source ID gets `upsert_footnote` on every file it appears in. Emit `gc_footnotes` if any source becomes unreferenced after deletes.
 9. State updates: `update_state` for `open_issues_count`, `overdue_invoices_count`, `pending_review_count` when their counts change.

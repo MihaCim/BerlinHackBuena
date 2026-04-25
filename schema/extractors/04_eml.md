@@ -1,12 +1,12 @@
 # 04 — Email Body Extractor
 
-Input: one `.eml` (headers + body). Optional: row from `emails_index.csv`, candidate entity IDs from stammdaten.
+Input: one normalized email markdown file generated from `.eml` (frontmatter + headers + body). Optional: row from `emails_index.csv`, candidate entity IDs from stammdaten.
 
 Goal: produce a PatchPlan fragment plus facts and entity records.
 
 ## Parsing
 
-From, To, Cc, Subject, Date, Message-ID, body, attachments. Strip quoted reply text — do not derive new facts from quoted content.
+From, To, Cc, Subject, Date, Message-ID, body, attachments if present in normalized markdown. Strip quoted reply text — do not derive new facts from quoted content.
 
 ## Resolution
 

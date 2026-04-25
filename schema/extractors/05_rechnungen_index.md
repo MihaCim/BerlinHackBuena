@@ -10,7 +10,7 @@ For each row:
 - preserve `INV-*` as `source_id`
 - preserve `DL-*` if present
 - expected pdf path: `rechnungen/{month_dir}/{filename}`
-- normalized path: `normalize/pdf/{month_dir}/{source_id}.md`
+- normalized path: `normalize/incremental/day-NN/rechnungen/{month_dir}/{filename-with-md-extension}`
 - parse `netto/mwst/brutto` as decimals
 - flag malformed amounts, missing DL-id, duplicate `rechnungsnr`
 

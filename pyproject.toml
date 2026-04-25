@@ -10,6 +10,8 @@ dependencies = [
     "pypdf>=5.0.0",
     "structlog>=24.4",
     "httpx>=0.28",
+    "deepagents>=0.5.3",
+    "langchain-google-genai>=4.2.2",
 ]
 
 [dependency-groups]

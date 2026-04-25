@@ -9,7 +9,7 @@ Goal: produce per-row source records and entity hints for the body extractor. No
 For each row:
 - preserve `EMAIL-*` as `source_id`
 - expected source path: `emails/{month_dir}/{filename}`
-- normalized path: `normalize/eml/{month_dir}/{source_id}.md`
+- normalized path: `normalize/incremental/day-NN/emails/{month_dir}/{filename-with-md-extension}`
 - match `from_email` / `to_email` against stammdaten registry → candidate entity IDs
 - pre-classify subject only (greetings, newsletters, autoreplies → `noise` or `reference_only`)
 - flag rows with `error_types`

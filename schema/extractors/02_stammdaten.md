@@ -1,6 +1,6 @@
 # 02 — Stammdaten Loader
 
-Input: master-data files from `data/stammdaten/` — `eigentuemer.csv`, `mieter.csv`, `einheiten.csv`, `dienstleister.csv`, `stammdaten.json`.
+Input: normalized master-data markdown from `normalize/base/stammdaten/` — `eigentuemer.md`, `mieter.md`, `einheiten.md`, `dienstleister.md`, `stammdaten.md`.
 
 Goal: produce a flat entity registry used by all later extractors for resolution. No wiki ops.
 

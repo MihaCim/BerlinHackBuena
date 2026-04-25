@@ -6,28 +6,28 @@ Pure function. No guessing.
 
 | Entity | Wiki path |
 |---|---|
-| LIE-001 | `wiki/LIE-001/index.md` |
-| HAUS-12 (in LIE-001) | `wiki/LIE-001/02_buildings/HAUS-12/index.md` |
-| EH-014 (in HAUS-12) | `wiki/LIE-001/02_buildings/HAUS-12/units/EH-014.md` |
-| EIG-014 | `wiki/LIE-001/03_people/eigentuemer/EIG-014.md` |
-| MIE-014 | `wiki/LIE-001/03_people/mieter/MIE-014.md` |
-| DL-007 | `wiki/LIE-001/04_dienstleister/DL-007.md` |
-| INV-02103 (2026-04) | `wiki/LIE-001/05_finances/invoices/2026-04/INV-02103.md` |
+| LIE-001 | `output/LIE-001/building.md` |
+| HAUS-12 (in LIE-001) | `output/LIE-001/02_buildings/HAUS-12/index.md` |
+| EH-014 (in HAUS-12) | `output/LIE-001/02_buildings/HAUS-12/units/EH-014.md` |
+| EIG-014 | `output/LIE-001/03_people/eigentuemer/EIG-014.md` |
+| MIE-014 | `output/LIE-001/03_people/mieter/MIE-014.md` |
+| DL-007 | `output/LIE-001/04_dienstleister/DL-007.md` |
+| INV-02103 (2026-04) | `output/LIE-001/05_finances/invoices/2026-04/INV-02103.md` |
 
-Normalized source paths (sibling to `wiki/`):
+Normalized source paths (sibling to `output/`):
 
 | Source | Normalized path |
 |---|---|
-| EMAIL-12044 | `normalize/eml/2026-04/EMAIL-12044.md` |
-| INV-02103 | `normalize/pdf/2026-04/INV-02103.md` |
-| LTR-0128 | `normalize/letter/2026-04/LTR-0128.md` |
-| TX-00871 | `normalize/bank/2026-04/TX-00871.md` |
+| EMAIL-12044 | `normalize/incremental/day-NN/emails/2026-04/20260425_143200_EMAIL-12044.md` |
+| INV-02103 | `normalize/incremental/day-NN/rechnungen/2026-04/20260423_DL-007_INV-02103.md` |
+| LTR-0128 | `normalize/incremental/day-NN/briefe/2026-04/20260420_mieterhoehung_LTR-0128.md` |
+| TX-00871 | `normalize/incremental/day-NN/bank/bank_index.md` |
 
 ## Section Vocabulary (only these are valid `section` values)
 
 | File | Sections |
 |---|---|
-| `LIE/index.md` | `Buildings`, `Bank Accounts`, `Open Issues`, `Recent Events`, `Procedural Memory`, `Provenance` |
+| `LIE/building.md` | `Buildings`, `Bank Accounts`, `Open Issues`, `Recent Events`, `Procedural Memory`, `Provenance` |
 | `HAUS/index.md` | `Summary`, `Units`, `Open Issues`, `Recent Events`, `Contractors Active`, `Provenance` |
 | `units/EH-XX.md` | `Unit Facts`, `Current Tenant`, `Current Owner`, `History`, `Provenance` |
 | `eigentuemer/EIG-XX.md` | `Contact`, `Units Owned`, `Roles`, `Payment History`, `Correspondence Summary`, `Provenance` |
@@ -45,7 +45,7 @@ A patch targeting any other section is invalid. If unsure, output a `review_item
 
 ```json
 {
-  "file": "wiki/LIE-001/02_buildings/HAUS-12/index.md",
+  "file": "output/LIE-001/02_buildings/HAUS-12/index.md",
   "section": "Open Issues",
   "op": "upsert_bullet",
   "key": "EH-014",

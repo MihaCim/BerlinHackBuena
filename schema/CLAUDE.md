@@ -9,13 +9,13 @@ You maintain a markdown-based property-management wiki for German WEG (Wohnungse
 
 ## Mission
 
-Produce ONE living `index.md` per property (Liegenschaft). Dense. Self-updating. Surgically updated **without destroying human edits**. Every fact traced to source. Compact at all times. Think CLAUDE.md, but for a building — and you write it.
+Produce ONE living `building.md` per property (Liegenschaft) under `output/<LIE-id>/`. Dense. Self-updating. Surgically updated **without destroying human edits**. Every fact traced to normalized source markdown. Compact at all times. Think CLAUDE.md, but for a building — and you write it.
 
 ## Wiki structure (immutable contract)
 
 ```
-wiki/<LIE-id>/
-  index.md                    # entry — read first
+output/<LIE-id>/
+  building.md                 # Buena deliverable — read first
   _state.json                 # sidecar metadata (last_patched, counts, sha256)
   log.md                      # property event log
   _pending_review.md          # contradictions awaiting PM
@@ -59,7 +59,7 @@ Stable section names per file type (do not rename casually):
 
 | File type | Required sections |
 |---|---|
-| LIE/index.md | Buildings, Bank Accounts, Open Issues, Recent Events, Procedural Memory, Provenance |
+| LIE/building.md | Buildings, Bank Accounts, Open Issues, Recent Events, Procedural Memory, Provenance |
 | HAUS/index.md | Summary, Units, Open Issues, Recent Events, Contractors Active, Provenance |
 | Unit (EH-XX.md) | Unit Facts, Current Tenant, Current Owner, History, Provenance |
 | Owner (EIG-XX.md) | Contact, Units Owned, Roles, Payment History, Correspondence Summary, Provenance |
@@ -101,7 +101,7 @@ Append at top, prune oldest beyond max=50. Older rows → `07_timeline.md`. Olde
 ### Footnotes
 
 ```
-[^EMAIL-12044]: normalize/eml/2026-04/EMAIL-12044.md
+[^EMAIL-12044]: normalize/incremental/day-NN/emails/2026-04/20260425_143200_EMAIL-12044.md
 ```
 
 Upsert by `[^KEY]:` prefix. Idempotent. GC drops entries with `ref_count == 0`.
@@ -153,9 +153,10 @@ Each event MUST carry: `event_id` (idempotency key), `event_type`, `tenant_id`, 
 For every accepted event:
 
 ```
-1. NORMALIZE — convert raw payload to markdown via Docling/markitdown/Whisper.
-   Write to normalize/<type>/<YYYY-MM>/<id>.md with frontmatter
-   (source, sha256, parser, parsed_at, mime, lang).
+1. NORMALIZE — convert raw payload to markdown with deterministic parsers.
+   PDFs use pypdf, emails use Python email parsing, CSV/JSON/XML use stdlib readers.
+   Write to normalize/base/... for base sources or normalize/incremental/day-NN/... for deltas.
+   Frontmatter includes source_id, source_type, source_path, content_hash, size_bytes, normalized_at.
 
 2. CLASSIFY (Haiku, sender + subject + first 500 chars only)
    → {signal: bool, category, priority, confidence}.
@@ -228,7 +229,7 @@ A human or the Linter resolves later (with bigger context).
 - Footnote definitions live ONLY in `## Provenance` section of the same file.
 - Footnote ID format: `EMAIL-NNNNN`, `INV-NNNNN`, `LTR-NNNN`, `TX-NNNNN`.
 - On `gc_footnotes`, drop entries with `ref_count == 0`.
-- Two-hop trace: `[^EMAIL-12044]` → `normalize/eml/2026-04/EMAIL-12044.md` → `raw/emails/2026-04-25/...eml`.
+- Two-hop trace: `[^EMAIL-12044]` → `normalize/incremental/day-NN/emails/2026-04/...EMAIL-12044.md` → `data/incremental/day-NN/emails/2026-04/...EMAIL-12044.eml`.
 
 ## Skill extraction (Hermes loop)
 
@@ -285,38 +286,38 @@ The Linter watches `git log` for human-authored edits to the wiki and updates `s
   "event_type": "email.received",
   "ops": [
     {
-      "file": "wiki/LIE-001/02_buildings/HAUS-12/index.md",
+      "file": "output/LIE-001/02_buildings/HAUS-12/index.md",
       "section": "Open Issues",
       "op": "upsert_bullet",
       "key": "EH-014",
       "content": "- 🔴 **EH-014:** Heizung defekt seit 2026-04-23 [^EMAIL-12044]"
     },
     {
-      "file": "wiki/LIE-001/02_buildings/HAUS-12/index.md",
+      "file": "output/LIE-001/02_buildings/HAUS-12/index.md",
       "section": "Recent Events",
       "op": "prepend_row",
       "content": "| 2026-04-25 14:32 | HAUS-12 | email | Heizung EH-014 | [^EMAIL-12044] |"
     },
     {
-      "file": "wiki/LIE-001/02_buildings/HAUS-12/units/EH-014.md",
+      "file": "output/LIE-001/02_buildings/HAUS-12/units/EH-014.md",
       "section": "History",
       "op": "prepend_row",
       "content": "| 2026-04-25 | email | Heizung defekt | [^EMAIL-12044] |"
     },
     {
-      "file": "wiki/LIE-001/03_people/mieter/MIE-014.md",
+      "file": "output/LIE-001/03_people/mieter/MIE-014.md",
       "section": "Contact History",
       "op": "prepend_row",
       "content": "| 2026-04-25 | email | Heizung gemeldet | [^EMAIL-12044] |"
     },
     {
-      "file": "wiki/LIE-001/02_buildings/HAUS-12/index.md",
+      "file": "output/LIE-001/02_buildings/HAUS-12/index.md",
       "op": "upsert_footnote",
       "key": "EMAIL-12044",
-      "value": "normalize/eml/2026-04/EMAIL-12044.md"
+      "value": "normalize/incremental/day-NN/emails/2026-04/20260425_143200_EMAIL-12044.md"
     },
     {
-      "file": "wiki/LIE-001/_state.json",
+      "file": "output/LIE-001/_state.json",
       "op": "update_state",
       "field": "open_issues_count",
       "value": 3
