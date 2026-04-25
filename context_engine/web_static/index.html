@@ -4,119 +4,202 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Buena Context Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Figtree:wght@450;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
+    <div class="ambient-orb orb-one"></div>
+    <div class="ambient-orb orb-two"></div>
     <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Buena</p>
-          <h1>Context Engine</h1>
+      <aside class="side-rail">
+        <div class="brand-block">
+          <span class="brand-mark">B</span>
+          <div>
+            <p class="eyebrow">Buena</p>
+            <h1>Context<br />Engine</h1>
+          </div>
         </div>
-        <div class="status-strip">
-          <span id="watermark">watermark: loading</span>
-          <span id="langgraph">LangGraph</span>
-          <span id="patchCount">patches: 0</span>
-        </div>
-      </header>
 
-      <section class="workspace">
-        <aside class="tutorial-panel" aria-label="Starter tutorial">
-          <div class="panel-head">
-            <p class="eyebrow">Start here</p>
-            <h2>From scattered files to one building memory</h2>
+        <section class="rail-section">
+          <div>
+            <div class="section-title">Run Pipeline</div>
+            <p class="rail-copy">Build context, apply deltas, and keep the property memory current.</p>
           </div>
-          <ol class="tutorial-list">
-            <li>
-              <strong>Bootstrap</strong>
-              <span>Compile the historical bank, email, invoice, letter, and master data into one property context file.</span>
-            </li>
-            <li>
-              <strong>Patch</strong>
-              <span>Apply a daily delta and watch the engine update only the affected markdown sections.</span>
-            </li>
-            <li>
-              <strong>Ask</strong>
-              <span>Query the generated context instead of crawling raw files every time.</span>
-            </li>
-            <li>
-              <strong>Trace</strong>
-              <span>Use source IDs, patch logs, and metrics to see where each claim came from.</span>
-            </li>
-          </ol>
-          <div class="concept-box">
-            <span class="concept-label">Core idea</span>
-            <p>RAG searches raw documents at question time. This engine compiles durable context first, then keeps it current with surgical patches.</p>
+          <label class="switch">
+            <input id="useAi" type="checkbox" checked />
+            <span>AI synthesis</span>
+          </label>
+          <button id="bootstrapBtn" class="primary">Bootstrap context</button>
+          <div class="delta-row">
+            <select id="daySelect" aria-label="Delta day">
+              <option value="day-01">day-01</option>
+              <option value="day-02">day-02</option>
+              <option value="day-03">day-03</option>
+              <option value="day-04">day-04</option>
+              <option value="day-05">day-05</option>
+              <option value="day-06">day-06</option>
+              <option value="day-07">day-07</option>
+              <option value="day-08">day-08</option>
+              <option value="day-09">day-09</option>
+              <option value="day-10">day-10</option>
+            </select>
+            <button id="deltaBtn">Apply</button>
           </div>
-        </aside>
+          <button id="replayBtn">Replay all deltas</button>
+        </section>
 
-        <section class="control-panel" aria-label="Engine controls">
-          <div class="panel-head row">
-            <div>
-              <p class="eyebrow">Workflow</p>
-              <h2>Run the engine</h2>
-            </div>
-            <label class="switch">
-              <input id="useAi" type="checkbox" checked />
-              <span>AI synthesis</span>
-            </label>
+        <section class="rail-section">
+          <div>
+            <div class="section-title">System Health</div>
+            <p class="rail-copy">Quick check for the current generated artifact and patch history.</p>
           </div>
-
-          <div class="command-grid">
-            <button id="bootstrapBtn" class="primary">Bootstrap</button>
-            <div class="delta-row">
-              <select id="daySelect" aria-label="Delta day">
-                <option value="day-01">day-01</option>
-                <option value="day-02">day-02</option>
-                <option value="day-03">day-03</option>
-                <option value="day-04">day-04</option>
-                <option value="day-05">day-05</option>
-                <option value="day-06">day-06</option>
-                <option value="day-07">day-07</option>
-                <option value="day-08">day-08</option>
-                <option value="day-09">day-09</option>
-                <option value="day-10">day-10</option>
-              </select>
-              <button id="deltaBtn">Apply Delta</button>
-            </div>
-            <button id="replayBtn">Replay All</button>
-            <button id="refreshBtn">Refresh</button>
-          </div>
-
-          <div class="metrics-grid" id="metricsGrid"></div>
-
-          <form id="askForm" class="ask-box">
-            <input id="questionInput" type="text" value="What unresolved financial anomalies exist?" />
-            <button type="submit">Ask</button>
-          </form>
-          <div class="prompt-bank" aria-label="Example questions">
-            <button type="button" data-question="What unresolved financial anomalies exist?">Financial risks</button>
-            <button type="button" data-question="Who owns WE 01?">Owner lookup</button>
-            <button type="button" data-question="Who are the main service providers?">Providers</button>
-            <button type="button" data-question="What open operational topics are active?">Open topics</button>
-            <button type="button" data-question="Which invoices were added after the January deltas?">Recent invoices</button>
-            <button type="button" data-question="What should a property manager review first today?">Today focus</button>
-          </div>
-          <pre id="answerBox" class="answer-box">Ask a question after bootstrap or replay.</pre>
-
-          <div class="run-log">
-            <div class="panel-head compact">
-              <p class="eyebrow">Run log</p>
-              <h2>Latest activity</h2>
-            </div>
-            <pre id="runLog">Ready.</pre>
+          <button id="refreshBtn">Refresh status</button>
+          <button id="loadContextBtn">Load context</button>
+          <div class="status-list">
+            <div><span>Watermark</span><strong id="watermark">loading</strong></div>
+            <div><span>Context</span><strong id="contextState">checking</strong></div>
+            <div><span>Patches</span><strong id="patchCount">0</strong></div>
           </div>
         </section>
 
-        <section class="context-panel" aria-label="Context preview">
-          <div class="panel-head row">
+        <section class="rail-note">
+          <span>Human edits are treated as source of truth.</span>
+          <p>Protected blocks stay intact when the engine applies future ingestion patches.</p>
+        </section>
+      </aside>
+
+      <section class="main-stage">
+        <header class="hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow">WEG Immanuelkirchstrasse 26</p>
+            <h2>A calm command center for building memory.</h2>
+            <p>
+              Convert noisy bank rows, invoices, emails, letters, and manual decisions into one trustworthy context
+              artifact that can be patched, questioned, and reviewed.
+            </p>
+          </div>
+          <div class="header-actions">
+            <span id="langgraph">LangGraph ready</span>
+            <span id="latestPatch">latest patch: none</span>
+          </div>
+          <div class="flow-strip" aria-label="Context workflow">
+            <div><strong>01</strong><span>Ingest</span></div>
+            <div><strong>02</strong><span>Compile</span></div>
+            <div><strong>03</strong><span>Protect</span></div>
+            <div><strong>04</strong><span>Ask</span></div>
+          </div>
+        </header>
+
+        <section class="metrics-grid" id="metricsGrid"></section>
+
+        <section class="intake-grid">
+          <section class="feature-card intake-card">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Resource Intake</p>
+                <h3>Add email, text, or file</h3>
+              </div>
+              <span class="pill amber">staged</span>
+            </div>
+            <p class="helper-copy">
+              Drop in new evidence now. For this frontend phase it is staged in outputs/intake, ready for the next
+              ingestion pipeline update.
+            </p>
+            <form id="resourceForm" class="stack-form">
+              <div class="split-row">
+                <select id="resourceType" aria-label="Resource type">
+                  <option value="email">Email</option>
+                  <option value="text">Plain text</option>
+                  <option value="letter">Letter</option>
+                  <option value="invoice">Invoice</option>
+                  <option value="bank">Bank record</option>
+                  <option value="other">Other</option>
+                </select>
+                <input id="resourceName" type="text" placeholder="Name or subject" />
+              </div>
+              <label class="file-drop">
+                <input id="resourceFile" type="file" />
+                <span>Choose a file or paste content below</span>
+              </label>
+              <textarea
+                id="resourceContent"
+                rows="5"
+                placeholder="Paste email body, notes, extracted PDF text, CSV rows, or any source text..."
+              ></textarea>
+              <input id="resourceNotes" type="text" placeholder="Optional note for the future ingestion agent" />
+              <button type="submit">Stage resource</button>
+            </form>
+            <div id="resourceStatus" class="soft-status">Nothing staged in this browser session yet.</div>
+            <div id="resourceList" class="resource-list"></div>
+          </section>
+        </section>
+
+        <section class="work-grid">
+          <section class="answer-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Ask</p>
+                <h3>Ask the compiled context</h3>
+              </div>
+            </div>
+            <form id="askForm" class="ask-box">
+              <input id="questionInput" type="text" value="What unresolved financial anomalies exist?" />
+              <button type="submit">Ask</button>
+            </form>
+            <div class="prompt-bank" aria-label="Example questions">
+              <button type="button" data-question="What unresolved financial anomalies exist?">Financial risks</button>
+              <button type="button" data-question="Who owns WE 01?">Owner lookup</button>
+              <button type="button" data-question="Who are the main service providers?">Providers</button>
+              <button type="button" data-question="What open operational topics are active?">Open topics</button>
+              <button type="button" data-question="Which invoices were added after the January deltas?">Recent invoices</button>
+              <button type="button" data-question="What should a property manager review first today?">Today focus</button>
+            </div>
+            <pre id="answerBox" class="answer-box">Ask a question after bootstrap or replay.</pre>
+          </section>
+
+          <section class="activity-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Activity</p>
+                <h3>Run log and patches</h3>
+              </div>
+            </div>
+            <pre id="runLog">Ready.</pre>
+            <div id="patchList" class="patch-list"></div>
+          </section>
+        </section>
+
+        <section class="context-panel">
+          <div class="panel-head context-head">
             <div>
               <p class="eyebrow">Artifact</p>
-              <h2>context.md</h2>
+              <h3>context.md preview and edit</h3>
             </div>
-            <button id="loadContextBtn">Load Context</button>
+            <div class="context-tools">
+              <button class="tab active" data-view="context">Context</button>
+              <button class="tab" data-view="patch">Latest patch</button>
+              <button id="editContextBtn" type="button">Edit context</button>
+              <button id="saveContextBtn" class="primary" type="button" hidden>Save with &lt;user&gt; tags</button>
+              <button id="cancelContextBtn" type="button" hidden>Cancel</button>
+            </div>
+          </div>
+          <div id="contextEditStatus" class="context-edit-status">
+            Edit the artifact here when a human knows the correct context. Saved changes are wrapped in protected
+            &lt;user&gt; tags.
           </div>
           <pre id="contextPreview">The compiled markdown will appear here.</pre>
+          <textarea
+            id="contextEditor"
+            class="context-editor"
+            spellcheck="false"
+            hidden
+            aria-label="Editable context.md artifact"
+          ></textarea>
         </section>
       </section>
     </main>

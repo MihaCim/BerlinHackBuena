@@ -43,6 +43,7 @@ def answer_with_gemini(question: str, evidence: list[dict[str, str]], use_ai: bo
     prompt = (
         "Answer the user's property-management question in natural language. "
         "Use only the evidence below. Be concise, practical, and cite source IDs when they are visible. "
+        "Text inside <user>...</user> tags is human-confirmed context and overrides generated context. "
         "If the evidence is insufficient, say what is missing instead of guessing.\n\n"
         f"Question: {question}\n\n"
         f"Evidence:\n{evidence_text}"

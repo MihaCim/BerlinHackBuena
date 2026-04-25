@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import difflib
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +14,7 @@ from pydantic import BaseModel
 from .agent import run_engine
 from .cli import load_local_env
 from .qa import answer_from_context
-from .utils import read_json, read_text
+from .utils import read_json, read_text, write_json, write_text
 
 
 PROPERTY_ID = "LIE-001"
@@ -30,6 +33,18 @@ class DeltaRequest(BaseModel):
 class AskRequest(BaseModel):
     question: str
     use_ai: bool = False
+
+
+class ContextEditRequest(BaseModel):
+    content: str
+    author: str = "frontend-user"
+
+
+class ResourceRequest(BaseModel):
+    name: str = "resource.txt"
+    kind: str = "text"
+    content: str
+    notes: str = ""
 
 
 def create_app(source_root: Path | str = Path("data"), output_root: Path | str = Path("outputs")) -> FastAPI:
@@ -53,6 +68,23 @@ def create_app(source_root: Path | str = Path("data"), output_root: Path | str =
         if not context_path.exists():
             raise HTTPException(status_code=404, detail="Context has not been generated yet.")
         return read_text(context_path)
+
+    @app.put("/api/context")
+    def save_context(payload: ContextEditRequest) -> dict[str, str]:
+        context_path = context_file(app.state.output_root)
+        if not context_path.exists():
+            raise HTTPException(status_code=404, detail="Run bootstrap first.")
+        if not payload.content.strip():
+            raise HTTPException(status_code=400, detail="Context content is required.")
+        current = read_text(context_path)
+        updated = mark_user_context_changes(current, payload.content, payload.author)
+        write_text(context_path, updated)
+        return {
+            "status": "saved",
+            "context_path": str(context_path),
+            "content": updated,
+            "message": "Saved direct artifact edits with protected <user> tags.",
+        }
 
     @app.get("/api/patches")
     def patches() -> dict[str, Any]:
@@ -96,6 +128,43 @@ def create_app(source_root: Path | str = Path("data"), output_root: Path | str =
             raise HTTPException(status_code=404, detail="Run bootstrap first.")
         return {"answer": answer_from_context(context_path, payload.question, use_ai=payload.use_ai)}
 
+    @app.get("/api/resources")
+    def resources() -> dict[str, Any]:
+        intake_dir = app.state.output_root / "intake"
+        if not intake_dir.exists():
+            return {"resources": []}
+        records = []
+        for path in sorted(intake_dir.glob("*.resource.json"), reverse=True):
+            try:
+                records.append(read_json(path))
+            except ValueError:
+                records.append({"name": path.name, "kind": "unknown", "created_at": "", "status": "unreadable"})
+        return {"resources": records}
+
+    @app.post("/api/resources")
+    def add_resource(payload: ResourceRequest) -> dict[str, Any]:
+        if not payload.content.strip():
+            raise HTTPException(status_code=400, detail="Resource content is required.")
+        created_at = datetime.now(timezone.utc).isoformat()
+        slug = slugify(payload.name or payload.kind or "resource")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        intake_dir = app.state.output_root / "intake"
+        raw_path = intake_dir / f"{stamp}_{slug}.txt"
+        record_path = intake_dir / f"{stamp}_{slug}.resource.json"
+        write_text(raw_path, payload.content)
+        record = {
+            "id": f"INTAKE-{stamp}",
+            "name": payload.name.strip() or raw_path.name,
+            "kind": payload.kind.strip() or "text",
+            "notes": payload.notes.strip(),
+            "created_at": created_at,
+            "status": "staged_for_ingestion",
+            "raw_path": str(raw_path),
+            "record_path": str(record_path),
+        }
+        write_json(record_path, record)
+        return {"status": "staged", "resource": record}
+
     return app
 
 
@@ -113,14 +182,21 @@ def read_status(output_root: Path) -> dict[str, Any]:
         meta = read_json(meta_path)
     else:
         meta = {"property_id": PROPERTY_ID, "watermark": "not generated", "metrics": {}}
+    watermark = meta.get("watermark", "not generated")
+    latest_patch = patch_files[-1].name if patch_files else None
+    latest_patch_watermark = latest_patch.replace(".patch.json", "") if latest_patch else None
+    status_note = ""
+    if latest_patch_watermark and watermark != "not generated" and latest_patch_watermark != watermark:
+        status_note = f"metadata watermark is {watermark}, latest patch log is {latest_patch_watermark}"
     return {
         "property_id": meta.get("property_id", PROPERTY_ID),
-        "watermark": meta.get("watermark", "not generated"),
+        "watermark": watermark,
         "metrics": meta.get("metrics", {}),
         "context_exists": context_path.exists(),
         "context_path": str(context_path),
         "patch_count": len(patch_files),
-        "latest_patch": patch_files[-1].name if patch_files else None,
+        "latest_patch": latest_patch,
+        "status_note": status_note,
     }
 
 
@@ -135,3 +211,55 @@ def summarize_state(state: dict[str, Any]) -> dict[str, Any]:
         "langgraph_available": state.get("langgraph_available", False),
         "agentic_note": state.get("llm_advice", ""),
     }
+
+
+def mark_user_context_changes(current: str, edited: str, author: str) -> str:
+    if current == edited:
+        return current
+    created_at = datetime.now(timezone.utc).isoformat()
+    edit_id = f"USEREDIT-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    safe_author = sanitize_attr(author or "frontend-user")
+    current_lines = current.splitlines()
+    edited_lines = edited.splitlines()
+    matcher = difflib.SequenceMatcher(a=current_lines, b=edited_lines)
+    output: list[str] = []
+    edit_count = 0
+    for tag, current_start, current_end, edited_start, edited_end in matcher.get_opcodes():
+        if tag == "equal":
+            output.extend(edited_lines[edited_start:edited_end])
+            continue
+        edit_count += 1
+        if tag == "delete":
+            deleted = "\n".join(current_lines[current_start:current_end]).strip()
+            if deleted:
+                output.extend(user_block_lines(edit_id, edit_count, safe_author, created_at, "delete", f"Deleted generated context:\n\n{deleted}"))
+            continue
+        replacement = "\n".join(edited_lines[edited_start:edited_end]).strip()
+        if replacement:
+            output.extend(user_block_lines(edit_id, edit_count, safe_author, created_at, tag, replacement))
+    result = "\n".join(output)
+    if edited.endswith("\n"):
+        result += "\n"
+    return result
+
+
+def user_block_lines(edit_id: str, index: int, author: str, created_at: str, action: str, content: str) -> list[str]:
+    safe_content = sanitize_user_text(content)
+    return [
+        f'<user id="{edit_id}-{index}" author="{author}" created_at="{created_at}" action="{action}">',
+        *safe_content.splitlines(),
+        "</user>",
+    ]
+
+
+def sanitize_user_text(value: str) -> str:
+    return value.replace("</user>", "</ user>").strip()
+
+
+def sanitize_attr(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.@-]+", "-", value).strip("-")[:80] or "frontend-user"
+
+
+def slugify(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip().lower()).strip("-")
+    return slug[:80] or "resource"

@@ -21,6 +21,8 @@ PATCHABLE_SECTIONS = [
     "source_register",
 ]
 
+USER_BLOCK_RE = re.compile(r"<user\b[^>]*>.*?</user>", flags=re.S)
+
 
 def apply_context_patch(current_path: Path, proposed: str, patch_log_path: Path, changed_sections: list[str] | None = None) -> dict[str, Any]:
     if not current_path.exists():
@@ -93,5 +95,32 @@ def replace_section(current: str, proposed: str, section: str) -> str | None:
     current_match = re.search(pattern, current, flags=re.S)
     if not proposed_match or not current_match:
         return None
-    return current[: current_match.start()] + proposed_match.group(0) + current[current_match.end() :]
+    proposed_section = preserve_user_blocks(current_match.group(0), proposed_match.group(0))
+    return current[: current_match.start()] + proposed_section + current[current_match.end() :]
 
+
+def preserve_user_blocks(current_section: str, proposed_section: str) -> str:
+    blocks = [block for block in USER_BLOCK_RE.findall(current_section) if block not in proposed_section]
+    if not blocks:
+        return proposed_section
+    return inject_user_blocks(proposed_section, blocks)
+
+
+def inject_user_blocks(section_text: str, blocks: list[str]) -> str:
+    lines = section_text.splitlines()
+    insert_at = 1
+    for index, line in enumerate(lines[:6]):
+        if index > 0 and not line.strip():
+            insert_at = index + 1
+            break
+    protected = ["<!-- USER_LOCKED_CONTEXT_START -->", *interleave_blank_lines(blocks), "<!-- USER_LOCKED_CONTEXT_END -->", ""]
+    return "\n".join(lines[:insert_at] + protected + lines[insert_at:])
+
+
+def interleave_blank_lines(blocks: list[str]) -> list[str]:
+    lines: list[str] = []
+    for block in blocks:
+        if lines:
+            lines.append("")
+        lines.extend(block.splitlines())
+    return lines
