@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import hashlib
 import json
@@ -12,7 +13,6 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import Any
 
-import anyio
 from pypdf import PdfReader
 
 IGNORED_NAMES = {"DATA_SUMMARY.md", ".DS_Store"}
@@ -32,18 +32,18 @@ class NormalizationService:
         self.normalize_dir = normalize_dir
 
     async def normalize_base(self, overwrite: bool = True) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._normalize_base_sync, overwrite)
+        return await asyncio.to_thread(self._normalize_base_sync, overwrite)
 
     async def normalize_incremental_day(
         self, day: str, overwrite: bool = True
     ) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._normalize_incremental_day_sync, day, overwrite)
+        return await asyncio.to_thread(self._normalize_incremental_day_sync, day, overwrite)
 
     async def normalize_all_incremental(self, overwrite: bool = True) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._normalize_all_incremental_sync, overwrite)
+        return await asyncio.to_thread(self._normalize_all_incremental_sync, overwrite)
 
     async def status(self) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._status_sync)
+        return await asyncio.to_thread(self._status_sync)
 
     def _normalize_base_sync(self, overwrite: bool = True) -> dict[str, object]:
         batches = []

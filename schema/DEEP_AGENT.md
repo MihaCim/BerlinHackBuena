@@ -69,10 +69,64 @@ When building from base data for the first time:
 
 1. Read `schema/CLAUDE.md`, `schema/WIKI_SCHEMA.md`, and `schema/extractors/00_shared_rules.md`.
 2. Read `normalize/base/stammdaten/stammdaten.md` first.
-3. Create `output/LIE-001/building.md` from master data only.
-4. Create minimal imported pages only when they help keep `building.md` compact.
-5. Add `# Human Notes` to every context file. Never write below it after creation.
-6. Add provenance for every fact, even master data facts.
+3. Use master data only as the canonical entity scaffold: property, buildings, units, owners, tenants, providers, bank accounts.
+4. Then visit every normalized base source batch under `normalize/base/bank`, `normalize/base/rechnungen`, `normalize/base/briefe`, and `normalize/base/emails`.
+5. Create and patch imported pages whenever the source corpus contains durable context that would make `building.md` too large: building issues, unit history, owner/tenant contact history, provider invoices/performance, ETV/BKA/management, finance reconciliation, timeline, and procedural skills.
+6. Add `# Human Notes` to every context file. Never write below it after creation.
+7. Add provenance for every fact, including master data facts.
+8. The base build is incomplete if it only reflects `stammdaten`.
+
+## Base Enrichment Batch Flow
+
+The service may call you once per base batch to keep context windows manageable:
+
+```text
+normalize/base/stammdaten/
+normalize/base/bank/
+normalize/base/rechnungen/YYYY-MM/
+normalize/base/briefe/YYYY-MM/
+normalize/base/emails/YYYY-MM/
+```
+
+For each batch:
+
+1. Visit every `.md` file in the requested batch path. Do not infer from file names only.
+2. Read the extractor prompt for the source kind:
+   - bank: `schema/extractors/07_bank_index.md`, `schema/extractors/08_kontoauszug.md`
+   - invoices: `schema/extractors/06_invoice_pdf.md`
+   - letters: `schema/extractors/09_letter.md`
+   - emails: `schema/extractors/04_eml.md`
+3. Classify each source as `risk_update`, `financial_update`, `task_update`, `context_update`, `reference_only`, or `noise`.
+4. Patch only durable facts. Routine rent payments, invoice forwarding, greetings, and boilerplate are usually `reference_only` unless they affect reconciliation, arrears, duplicate/fake anomalies, disputes, repairs, legal events, ETV/BKA decisions, deadlines, or reusable procedures.
+5. Resolve every mentioned entity through existing `output/` pages and `normalize/base/stammdaten/stammdaten.md`.
+6. Organize facts by target scope:
+   - property: `output/LIE-001/building.md`, `01_management/*`, `05_finances/*`, `07_timeline.md`
+   - building: `02_buildings/<HAUS-id>/index.md`, `issues.md`, `physical.md`
+   - unit: `02_buildings/<HAUS-id>/units/<EH-id>.md`
+   - people: `03_people/eigentuemer/<EIG-id>.md`, `03_people/mieter/<MIE-id>.md`
+   - providers: `04_dienstleister/<DL-id>.md`
+   - procedures: `06_skills.md`
+7. Write conflicts or low-confidence unresolved items to `_pending_review.md`; never overwrite a conflicting existing fact.
+8. Update `log.md` and `07_timeline.md` with concise source-backed events.
+
+## Agent Skill Memory
+
+`output/LIE-001/06_skills.md` is your self-updating operating memory for this property. Create it when the source corpus reveals repeatable procedures, not for one-off facts.
+
+Each skill entry must include skills.md frontmatter style fields inside the entry:
+
+```markdown
+---
+name: heating-emergency-after-hours
+description: Procedure for heating outages after 18:00 or weekends in LIE-001. Triggers on Heizung/Warmwasser/kalt emails. Uses DL-003 unless a later conflict says otherwise. Confidence and sources included below.
+---
+**When:** ...
+**Steps:** ...
+**Source trajectories:** EMAIL-..., LTR-...
+**Confidence:** 0.0-1.0
+```
+
+Patch `06_skills.md` only when a batch shows a reusable pattern, escalation rule, vendor preference, recurring deadline procedure, reconciliation rule, or communication style rule. Link important skills back into `building.md` `## Procedural Memory` and relevant building pages.
 
 ## Incremental Batch Flow
 

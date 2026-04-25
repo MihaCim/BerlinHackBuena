@@ -7,11 +7,14 @@ dependencies = [
     "fastapi[standard]>=0.136.1",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
-    "pypdf>=5.0.0",
+    "pypdf>=6.10.2",
     "structlog>=24.4",
     "httpx>=0.28",
+    "python-dotenv>=1.0",
     "deepagents>=0.5.3",
     "langchain-google-genai>=4.2.2",
+    "anthropic>=0.97.0",
+    "duckdb>=1.5.2",
 ]
 
 [dependency-groups]
@@ -35,6 +38,7 @@ module-root = ""
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+extend-exclude = [".agents"]
 
 [tool.ruff.lint]
 select = [

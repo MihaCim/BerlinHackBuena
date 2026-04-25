@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import hashlib
 import json
@@ -14,7 +15,6 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import Any
 
-import anyio
 from pypdf import PdfReader
 
 IGNORED_NAMES = {"DATA_SUMMARY.md", ".DS_Store"}
@@ -36,16 +36,16 @@ class IngestionService:
         self._init_db()
 
     async def ingest_base(self, reprocess: bool = False) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._ingest_base_sync, reprocess)
+        return await asyncio.to_thread(self._ingest_base_sync, reprocess)
 
     async def ingest_incremental_day(self, day: str, reprocess: bool = False) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._ingest_incremental_day_sync, day, reprocess)
+        return await asyncio.to_thread(self._ingest_incremental_day_sync, day, reprocess)
 
     async def ingest_all_incremental(self, reprocess: bool = False) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._ingest_all_incremental_sync, reprocess)
+        return await asyncio.to_thread(self._ingest_all_incremental_sync, reprocess)
 
     async def status(self) -> dict[str, object]:
-        return await anyio.to_thread.run_sync(self._status_sync)
+        return await asyncio.to_thread(self._status_sync)
 
     def _ingest_base_sync(self, reprocess: bool = False) -> dict[str, object]:
         batches = self._base_batches()

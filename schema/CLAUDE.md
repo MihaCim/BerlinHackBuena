@@ -179,8 +179,13 @@ For every accepted event:
    uncertain → defer to Linter, write to _pending_review.md, drop op.
 
 7. APPLY (Patcher, line-based heading scan + keyed-line ops, no LLM)
+   - Validate every keyed value against schema/VOCABULARY.md. Unknown value
+     → defer to _pending_review.md, drop op.
    - Refuse any op targeting bytes past `# Human Notes`.
-   - Tempfile → fsync → atomic rename.
+   - Append a single `{"kind":"ingest", ...}` line to `<LIE>/_hermes_feedback.jsonl`
+     with retrieval_success, sections_read, sections_patched, complexity_score.
+     Idempotent on `ingest_id`.
+   - Tempfile → fsync → atomic rename (markdown files + JSONL line).
    - Single git commit per event: "ingest(<event_id>): <summary>".
 
 8. REINDEX (post-commit hook, no LLM)
@@ -189,11 +194,26 @@ For every accepted event:
 9. SSE BROADCAST (optional, for live UI)
    Emit {type, file, section, commit} → Obsidian / live web UI pulses.
 
-10. HERMES COMPLEXITY CHECK (async)
+10. HERMES INNER LOOP — SKILL EXTRACTION (async Linter, post-commit)
     score = num_tool_calls + 2 × num_source_docs + num_prose_merges
-    If score > 5 OR PatchPlan touched > 3 prose anchors → enqueue for Linter.
-    Linter later replays trajectory, distills skill, surgically patches
-    `06_skills.md` and the relevant `## Procedural Memory` section.
+    If score > 5 OR PatchPlan touched > 3 prose anchors → enqueue Linter inner-loop job.
+    Linter replays trajectory, distills skill, surgically patches
+    `06_skills.md` (skill body) and the relevant `## Procedural Memory` bullet.
+    Appends `{"kind":"skill_extracted",...}` to `_hermes_feedback.jsonl`.
+    Full spec: schema/HERMES_LOOP.md §3.
+
+11. HERMES OUTER LOOP — SCHEMA MUTATION (nightly Linter, score-triggered)
+    Reads last 30 JSONL `ingest` entries per LIE.
+    section_failure_score(file,section) =
+        1 × (retrieval_success=false count)
+      + 2 × (correction count)
+      + 1 × (missing_context recurrence count)
+    If any (file,section) ≥ 3 OR no eval in last 100 ingests → propose schema change.
+    Writes proposal to `<LIE>/_pending_review.md`, appends
+    `{"kind":"schema_proposal",...}` to JSONL.
+    PM appends `**Approved by:** <pm>` → Linter applies via Patcher ops, with
+    Tier B Archive-First if removing a section. Bumps schema_version.
+    Full spec: schema/HERMES_LOOP.md §4.
 ```
 
 ## Compactness rules (non-negotiable)
@@ -347,15 +367,25 @@ Patcher applies ops in order. Atomic commit. Message: `ingest(EMAIL-12044): heat
 | `write_log(entry)` | append to `<LIE>/log.md` |
 | `read_pending_review(property_id)` | open conflicts for review |
 
+## Reference docs (always available to Patcher / Linter)
+
+- `schema/WIKI_SCHEMA.md` — directory layout, frontmatter contract, surgical-update conventions, per-section metadata defaults, two-tier Archive-First, decisions log.
+- `schema/HERMES_LOOP.md` — full two-loop self-improvement spec: JSONL substrate, inner-loop skill extraction, outer-loop schema mutation, hard constraints, MVP cut.
+- `schema/VOCABULARY.md` — controlled vocabulary single source. Patcher MUST validate every keyed value against this file before emitting a PatchPlan. Unknown value → conflict to `_pending_review.md`, drop op. Append-only.
+- `schema/LEGAL_MAP.md` — German regulation → wiki section mapping (WEG, BauO Bln, BGB, BetrSichV, DGUV V3, DSGVO). Linter daily run order at the bottom.
+
 ## Self-check before emitting a PatchPlan
 
 - [ ] Every op targets an existing section (heading text matches schema)?
 - [ ] Every keyed bullet/row carries a stable `**ID:**` or first-cell key?
+- [ ] Every keyed value validated against `schema/VOCABULARY.md`?
 - [ ] Every fact carries a `[^source]` footnote?
 - [ ] No write past `# Human Notes`?
 - [ ] No prose merge where a structured op suffices?
 - [ ] Conflict scan run for each upsert?
-- [ ] File size budget respected? If not, schedule compaction first?
+- [ ] File size budget respected? Per-section token ceiling (`schema/WIKI_SCHEMA.md §15`) respected?
+- [ ] Statutory deadline check (`schema/LEGAL_MAP.md`) run if event involves ETV / Beschluss / Mieterhöhung / Wartung?
 - [ ] `_state.json` update included if counts/health changed?
+- [ ] One `{"kind":"ingest", ...}` line ready for atomic append to `<LIE>/_hermes_feedback.jsonl`?
 
 If any answer is no, fix before emitting.
