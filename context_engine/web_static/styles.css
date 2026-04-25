@@ -243,10 +243,41 @@ textarea::placeholder {
   display: grid;
   grid-template-columns: 312px minmax(0, 1fr);
   gap: var(--tile);
-  height: 100%;
-  padding: 0 var(--side-pad) var(--tile);
+  width: min(1120px, calc(100% - (var(--side-pad) * 2)));
+  height: calc(100% - 52px);
+  margin: 24px auto 28px;
+  padding: 40px var(--tile) var(--tile);
+  border: 1px solid var(--grid-line);
+  background: var(--panel-bg);
   overflow: auto;
   scrollbar-color: var(--grid-line) transparent;
+}
+
+.app-shell::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  height: 28px;
+  border-bottom: 1px solid var(--grid-line);
+  color: var(--text-primary);
+  content: "APP.BUENA.CONTEXT";
+}
+
+.app-shell::after {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  width: 4px;
+  height: 4px;
+  color: var(--text-primary);
+  background: currentColor;
+  box-shadow:
+    8px 0 0 currentColor,
+    16px 0 0 currentColor;
+  content: "";
 }
 
 .side-rail,
