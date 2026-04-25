@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.6",
+  "checkpoint_id": "0ff2e67272a5",
+  "strategy": "manual-commit",
+  "branch": "adi_dev",
+  "checkpoints_count": 4,
+  "files_touched": null,
+  "sessions": [
+    {
+      "metadata": "/0f/f2e67272a5/0/metadata.json",
+      "transcript": "/0f/f2e67272a5/0/full.jsonl",
+      "content_hash": "/0f/f2e67272a5/0/content_hash.txt",
+      "prompt": "/0f/f2e67272a5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 769570,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 22961664,
+    "output_tokens": 52194,
+    "api_call_count": 194
+  }
+}
