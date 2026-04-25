@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.6",
+  "checkpoint_id": "83300abccbaf",
+  "session_id": "ses_23a484153ffezHOhXqzsxRW1vr",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-25T18:26:06.59413184Z",
+  "branch": "adi_dev",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "gpt-5.5",
+  "turn_id": "2b37cfa7bd00",
+  "token_usage": {
+    "input_tokens": 754420,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 20186112,
+    "output_tokens": 46783,
+    "api_call_count": 181
+  },
+  "session_metrics": {
+    "turn_count": 10
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 217,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".opencode/plugins/entire.ts": 216,
+        ".python-version": 1
+      }
+    }
+  ]
+}
