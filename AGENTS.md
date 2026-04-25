@@ -46,6 +46,7 @@ tests/
   conftest.py          # AsyncClient fixture, dependency_overrides
   test_*.py
 data/                  # raw source dataset (read-only)
+normalize/             # generated LLM-friendly markdown sources (ignored)
 schema/                # extraction prompts + WIKI_SCHEMA
 output/                # building.md files (written by pipeline, served by API)
 ```

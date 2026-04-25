@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     data_dir: Path = Field(default=REPO_ROOT / "data")
+    normalize_dir: Path = Field(default=REPO_ROOT / "normalize")
     output_dir: Path = Field(default=REPO_ROOT / "output")
     ingestion_db_path: Path = Field(default=REPO_ROOT / ".local" / "ingestion.sqlite3")
 

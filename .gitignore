@@ -13,3 +13,4 @@ build/
 .env.local
 codex_mem/
 .local/
+normalize/

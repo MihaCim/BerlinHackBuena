@@ -40,7 +40,7 @@ The goal is to build a system that can ingest these sources, extract relevant fa
 
 ## Getting Started
 
-The repository now includes a FastAPI ingestion service that scans `data/`, ignores `data/DATA_SUMMARY.md`, and checkpoints batch/source ingestion in local SQLite.
+The repository now includes a FastAPI ingestion service that scans `data/`, ignores `data/DATA_SUMMARY.md`, checkpoints batch/source ingestion in local SQLite, and normalizes raw files into LLM-friendly Markdown under `normalize/`.
 
 Possible first milestones:
 
@@ -65,7 +65,11 @@ uv run uvicorn app.main:app --reload
 
 curl -X POST 'http://127.0.0.1:8000/api/v1/ingest/base'
 
+curl -X POST 'http://127.0.0.1:8000/api/v1/normalize/base'
+
 curl -X POST 'http://127.0.0.1:8000/api/v1/ingest/incremental/day-01'
+
+curl -X POST 'http://127.0.0.1:8000/api/v1/normalize/incremental/day-01'
 ```
 
 ## License
