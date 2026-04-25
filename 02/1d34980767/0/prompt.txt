@@ -1,1 +1,1 @@
-read both files in codex_mem/ and start the ingestion implementation, the data is in data/ and inside data/ ignore DATA_SUMMARY.md, create a fastapi backend and add endpoint to ingest base data, and incremental data as well, then make a curl test to ingest base data do not download torch , or its cuda, at max we use torch cpu.
+can you make ingestion async?
