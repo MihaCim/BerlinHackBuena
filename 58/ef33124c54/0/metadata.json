@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.5.6",
+  "checkpoint_id": "58ef33124c54",
+  "session_id": "ses_23a484153ffezHOhXqzsxRW1vr",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-25T20:58:13.512613447Z",
+  "branch": "backup/adi-dev-before-main-pull-revert",
+  "checkpoints_count": 3,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "gpt-5.5",
+  "turn_id": "cbaa1e4c4b53",
+  "token_usage": {
+    "input_tokens": 2348213,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 51728384,
+    "output_tokens": 139802,
+    "api_call_count": 402
+  },
+  "session_metrics": {
+    "turn_count": 44
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 2204,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_removed_per_file": {
+        ".agents/skills/caveman-commit/SKILL.md": 65,
+        ".agents/skills/caveman-compress/README.md": 163,
+        ".agents/skills/caveman-compress/SECURITY.md": 31,
+        ".agents/skills/caveman-compress/SKILL.md": 111,
+        ".agents/skills/caveman-compress/scripts/__init__.py": 9,
+        ".agents/skills/caveman-compress/scripts/__main__.py": 3,
+        ".agents/skills/caveman-compress/scripts/benchmark.py": 78,
+        ".agents/skills/caveman-compress/scripts/cli.py": 73,
+        ".agents/skills/caveman-compress/scripts/compress.py": 227,
+        ".agents/skills/caveman-compress/scripts/detect.py": 121,
+        ".agents/skills/caveman-compress/scripts/validate.py": 189,
+        ".agents/skills/caveman-help/SKILL.md": 59,
+        ".agents/skills/caveman-review/SKILL.md": 55,
+        ".agents/skills/caveman/SKILL.md": 67,
+        ".agents/skills/compress/SKILL.md": 111,
+        ".agents/skills/compress/scripts/__init__.py": 9,
+        ".agents/skills/compress/scripts/__main__.py": 3,
+        ".agents/skills/compress/scripts/benchmark.py": 78,
+        ".agents/skills/compress/scripts/cli.py": 73,
+        ".agents/skills/compress/scripts/compress.py": 227,
+        ".agents/skills/compress/scripts/detect.py": 121,
+        ".agents/skills/compress/scripts/validate.py": 189,
+        ".dockerignore": 46,
+        "Dockerfile": 49,
+        "docker-compose.yml": 47
+      }
+    }
+  ]
+}
