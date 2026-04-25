@@ -37,3 +37,5 @@ async def build_base_context(
         return await service.build_base_context()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Context agent failed: {exc}") from exc
