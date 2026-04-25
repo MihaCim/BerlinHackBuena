@@ -14,6 +14,7 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import Any
 
+import anyio
 from pypdf import PdfReader
 
 IGNORED_NAMES = {"DATA_SUMMARY.md", ".DS_Store"}
@@ -34,18 +35,30 @@ class IngestionService:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def ingest_base(self, reprocess: bool = False) -> dict[str, object]:
+    async def ingest_base(self, reprocess: bool = False) -> dict[str, object]:
+        return await anyio.to_thread.run_sync(self._ingest_base_sync, reprocess)
+
+    async def ingest_incremental_day(self, day: str, reprocess: bool = False) -> dict[str, object]:
+        return await anyio.to_thread.run_sync(self._ingest_incremental_day_sync, day, reprocess)
+
+    async def ingest_all_incremental(self, reprocess: bool = False) -> dict[str, object]:
+        return await anyio.to_thread.run_sync(self._ingest_all_incremental_sync, reprocess)
+
+    async def status(self) -> dict[str, object]:
+        return await anyio.to_thread.run_sync(self._status_sync)
+
+    def _ingest_base_sync(self, reprocess: bool = False) -> dict[str, object]:
         batches = self._base_batches()
         return self._ingest_batches(batches, reprocess=reprocess)
 
-    def ingest_incremental_day(self, day: str, reprocess: bool = False) -> dict[str, object]:
+    def _ingest_incremental_day_sync(self, day: str, reprocess: bool = False) -> dict[str, object]:
         day_name = day if day.startswith("day-") else f"day-{int(day):02d}"
         day_dir = self.data_dir / "incremental" / day_name
         if not day_dir.exists():
             raise FileNotFoundError(f"Incremental day not found: {day_dir}")
         return self._ingest_batches((self._incremental_batch(day_dir),), reprocess=reprocess)
 
-    def ingest_all_incremental(self, reprocess: bool = False) -> dict[str, object]:
+    def _ingest_all_incremental_sync(self, reprocess: bool = False) -> dict[str, object]:
         incremental_dir = self.data_dir / "incremental"
         if not incremental_dir.exists():
             return {
@@ -62,7 +75,7 @@ class IngestionService:
         )
         return self._ingest_batches(batches, reprocess=reprocess)
 
-    def status(self) -> dict[str, object]:
+    def _status_sync(self) -> dict[str, object]:
         with self._connect() as con:
             batch_counts = con.execute(
                 "select status, count(*) from ingestion_batches group by status"

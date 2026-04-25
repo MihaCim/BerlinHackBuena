@@ -17,37 +17,37 @@ def get_ingestion_service(
 
 
 @router.post("/base")
-def ingest_base(
+async def ingest_base(
     service: Annotated[IngestionService, Depends(get_ingestion_service)],
     reprocess: Annotated[bool, Query()] = False,
 ) -> dict[str, object]:
     if not service.data_dir.exists():
         raise HTTPException(status_code=404, detail=f"Data directory not found: {service.data_dir}")
-    return service.ingest_base(reprocess=reprocess)
+    return await service.ingest_base(reprocess=reprocess)
 
 
 @router.post("/incremental/{day}")
-def ingest_incremental_day(
+async def ingest_incremental_day(
     day: str,
     service: Annotated[IngestionService, Depends(get_ingestion_service)],
     reprocess: Annotated[bool, Query()] = False,
 ) -> dict[str, object]:
     try:
-        return service.ingest_incremental_day(day=day, reprocess=reprocess)
+        return await service.ingest_incremental_day(day=day, reprocess=reprocess)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/incremental")
-def ingest_all_incremental(
+async def ingest_all_incremental(
     service: Annotated[IngestionService, Depends(get_ingestion_service)],
     reprocess: Annotated[bool, Query()] = False,
 ) -> dict[str, object]:
-    return service.ingest_all_incremental(reprocess=reprocess)
+    return await service.ingest_all_incremental(reprocess=reprocess)
 
 
 @router.get("/status")
-def ingest_status(
+async def ingest_status(
     service: Annotated[IngestionService, Depends(get_ingestion_service)],
 ) -> dict[str, object]:
-    return service.status()
+    return await service.status()
