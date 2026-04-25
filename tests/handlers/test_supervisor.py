@@ -23,10 +23,10 @@ async def test_supervisor_runs_signal_to_apply_and_reindex(tmp_path: Path) -> No
     )
     llm = FakeLLMClient(
         {
-            settings.haiku_model: (
+            settings.fast_model: (
                 '{"signal": true, "category": "manual/leak", "priority": "high", "confidence": 0.9}'
             ),
-            settings.sonnet_model: (
+            settings.smart_model: (
                 '{"summary":"manual leak","ops":['
                 '{"op":"upsert_bullet","file":"index.md","section":"Open Issues",'
                 '"key":"EH-001","text":"- 🔴 **EH-001:** Leak reported [^EVT-1]"},'

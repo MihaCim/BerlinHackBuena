@@ -15,22 +15,31 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_settings_loads_app_prefixed_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "staging")
     monkeypatch.setenv("APP_LOG_LEVEL", "DEBUG")
-    monkeypatch.setenv("APP_HAIKU_MODEL", "test-haiku")
+    monkeypatch.setenv("APP_FAST_MODEL", "test-fast")
     monkeypatch.setenv("APP_ANTHROPIC_API_KEY", "sk-test")
+    monkeypatch.setenv("APP_LLM_PROVIDER", "anthropic")
 
     s = Settings()
     assert s.env == "staging"
     assert s.log_level == "DEBUG"
-    assert s.haiku_model == "test-haiku"
+    assert s.fast_model == "test-fast"
     assert s.anthropic_api_key == "sk-test"
 
 
-def test_settings_defaults() -> None:
-    s = Settings()
+def test_settings_defaults_for_gemini() -> None:
+    s = Settings(_env_file=None)
     assert s.app_name == "buena-context"
-    assert s.haiku_model == "claude-haiku-4-5-20251001"
-    assert s.sonnet_model == "claude-sonnet-4-6"
+    assert s.llm_provider == "gemini"
+    assert s.fast_model == "gemini-2.5-flash-lite"
+    assert s.smart_model == "gemini-2.5-pro"
     assert s.webhook_hmac_secret is None
+
+
+def test_settings_defaults_for_anthropic(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_LLM_PROVIDER", "anthropic")
+    s = Settings(_env_file=None)
+    assert s.fast_model == "claude-haiku-4-5-20251001"
+    assert s.smart_model == "claude-sonnet-4-6"
 
 
 def test_get_settings_is_cached() -> None:

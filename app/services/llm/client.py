@@ -4,6 +4,7 @@ import hashlib
 from collections.abc import Mapping
 from typing import Annotated, Protocol
 
+import anyio
 import httpx
 from fastapi import Depends
 
@@ -62,6 +63,63 @@ class AnthropicClient:
         )
 
 
+class GeminiClient:
+    """Minimal Gemini generateContent client used behind the LLMClient protocol."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        timeout: float = 60.0,
+        base_url: str = "https://generativelanguage.googleapis.com/v1beta/models",
+    ) -> None:
+        self._api_key = api_key
+        self._timeout = timeout
+        self._base_url = base_url
+
+    async def complete(self, *, model: str, system_prompt: str, user_prompt: str) -> str:
+        url = f"{self._base_url}/{model}:generateContent"
+        payload = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+            "generationConfig": {"maxOutputTokens": 4096, "temperature": 0.2},
+        }
+        headers = {"content-type": "application/json", "x-goog-api-key": self._api_key}
+        delays = [2.0, 5.0, 15.0]
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            for attempt, delay in enumerate([*delays, 0.0]):
+                response = await client.post(url, headers=headers, json=payload)
+                if response.status_code != httpx.codes.TOO_MANY_REQUESTS or attempt == len(delays):
+                    break
+                await anyio.sleep(self._retry_after(response, fallback=delay))
+        response.raise_for_status()
+        data = response.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = candidates[0].get("content", {}).get("parts", [])
+        return "".join(p.get("text", "") for p in parts if isinstance(p, Mapping))
+
+    @staticmethod
+    def _retry_after(response: httpx.Response, *, fallback: float) -> float:
+        header = response.headers.get("retry-after")
+        if header:
+            try:
+                return float(header)
+            except ValueError:
+                pass
+        try:
+            details = response.json().get("error", {}).get("details", [])
+            for d in details:
+                if d.get("@type", "").endswith("RetryInfo"):
+                    raw = d.get("retryDelay", "")
+                    if raw.endswith("s"):
+                        return float(raw[:-1])
+        except (ValueError, AttributeError):
+            pass
+        return fallback
+
+
 class FakeLLMClient:
     """Offline LLM test double keyed by (model, prompt_hash(user_prompt))."""
 
@@ -104,6 +162,14 @@ def _system_prompt() -> str:
 def get_llm_client(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> LLMClient:
-    if settings.anthropic_api_key is None:
-        return FakeLLMClient()
-    return AnthropicClient(api_key=settings.anthropic_api_key)
+    match settings.llm_provider:
+        case "gemini":
+            if settings.gemini_api_key is None:
+                return FakeLLMClient()
+            return GeminiClient(api_key=settings.gemini_api_key)
+        case "anthropic":
+            if settings.anthropic_api_key is None:
+                return FakeLLMClient()
+            return AnthropicClient(api_key=settings.anthropic_api_key)
+        case "fake":
+            return FakeLLMClient()

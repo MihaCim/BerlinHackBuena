@@ -42,7 +42,7 @@ async def classify_document(
     settings: Settings,
 ) -> Classification:
     response = await llm.complete(
-        model=settings.haiku_model,
+        model=settings.fast_model,
         system_prompt=_classification_system_prompt(),
         user_prompt=classify_prompt(normalized_text=normalized_text),
     )

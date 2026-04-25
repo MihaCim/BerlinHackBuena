@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,10 +30,26 @@ class Settings(BaseSettings):
     normalize_dir: Path = Field(default=REPO_ROOT / "normalize")
 
     anthropic_api_key: str | None = Field(default=None)
+    gemini_api_key: str | None = Field(default=None)
     webhook_hmac_secret: str | None = Field(default=None)
 
-    haiku_model: str = "claude-haiku-4-5-20251001"
-    sonnet_model: str = "claude-sonnet-4-6"
+    llm_provider: Literal["anthropic", "gemini", "fake"] = "gemini"
+
+    fast_model: str = ""
+    smart_model: str = ""
+
+    @model_validator(mode="after")
+    def _resolve_model_defaults(self) -> Settings:
+        defaults = {
+            "anthropic": ("claude-haiku-4-5-20251001", "claude-sonnet-4-6"),
+            "gemini": ("gemini-2.5-flash-lite", "gemini-2.5-pro"),
+            "fake": ("fake-fast", "fake-smart"),
+        }[self.llm_provider]
+        if not self.fast_model:
+            self.fast_model = defaults[0]
+        if not self.smart_model:
+            self.smart_model = defaults[1]
+        return self
 
 
 @lru_cache(maxsize=1)
