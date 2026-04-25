@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     normalize_dir: Path = Field(default=REPO_ROOT / "normalize")
     output_dir: Path = Field(default=REPO_ROOT / "output")
     ingestion_db_path: Path = Field(default=REPO_ROOT / ".local" / "ingestion.sqlite3")
-    context_agent_model: str = "google_genai:gemini-flash-latest"
+    context_agent_model: str = "google_genai:gemini-3-pro-preview"
     gemini_api_key: SecretStr | None = None
 
 
