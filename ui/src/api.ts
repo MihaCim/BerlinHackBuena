@@ -42,3 +42,36 @@ export async function ask(
   if (!r.ok) return { ok: false, status: r.status };
   return { ok: true, data: await r.json() };
 }
+
+export type HumanNotes = { path: string; body: string };
+
+export async function fetchHumanNotes(path: string): Promise<HumanNotes> {
+  const r = await fetch(
+    `${base}/wiki/human-notes?path=${encodeURIComponent(path)}`,
+  );
+  if (!r.ok) throw new Error(`human-notes ${r.status}`);
+  return r.json();
+}
+
+export async function saveHumanNotes(
+  path: string,
+  body: string,
+  pmUser: string,
+): Promise<{ path: string; bytes_written: number; commit_sha: string | null }> {
+  const r = await fetch(
+    `${base}/wiki/human-notes?path=${encodeURIComponent(path)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-pm-user": pmUser,
+      },
+      body: JSON.stringify({ body }),
+    },
+  );
+  if (!r.ok) {
+    const detail = await r.text();
+    throw new Error(`human-notes save ${r.status}: ${detail}`);
+  }
+  return r.json();
+}

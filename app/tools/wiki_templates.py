@@ -57,16 +57,41 @@ def _haus_for_einheit(einheit_id: str, einheiten: list[dict[str, Any]]) -> str |
 def render_lie_index(stammdaten: dict[str, Any]) -> str:
     lie = stammdaten["liegenschaft"]
     gebaeude = stammdaten.get("gebaeude", [])
+    einheiten = stammdaten.get("einheiten", [])
+    eigentuemer = stammdaten.get("eigentuemer", [])
+    mieter = stammdaten.get("mieter", [])
+    dienstleister = stammdaten.get("dienstleister", [])
     lie_id = lie["id"]
     name = f"property-{lie_id.lower()}"
+
+    haus_refs = ", ".join(g["id"] for g in gebaeude) or "none"
+    sanierung = lie.get("sanierung")
+    sanierung_part = f", saniert {sanierung}" if sanierung else ""
     desc = (
-        f"Property {lie_id} ({lie.get('name', '')}, {lie.get('strasse', '')}, "
-        f"{lie.get('plz', '')} {lie.get('ort', '')}). Read first for any agent task "
-        f"touching this Liegenschaft. Lists buildings, bank accounts, open issues, "
-        f"recent events, and procedural memory. Drill into 02_buildings/ for per-building "
-        f"detail, 03_people/ for owners and tenants, 04_dienstleister/ for contractors."
+        f"Living context for {lie.get('name', lie_id)} ({lie_id}, "
+        f"{lie.get('plz', '')} {lie.get('ort', '')}). Baujahr {lie.get('baujahr', '?')}"
+        f"{sanierung_part}. {len(gebaeude)} buildings ({haus_refs}), {len(einheiten)} units, "
+        f"{len(eigentuemer)} owners, {len(mieter)} tenants, {len(dienstleister)} service "
+        f"providers. Verwalter {lie.get('verwalter', '?')}. WEG-Konto "
+        f"{lie.get('weg_bankkonto_bank', '?')}, Verwalter-Konto "
+        f"{lie.get('verwalter_bank', '?')}. First stop for ANY question about this "
+        f"property — buildings, units, owners, tenants, service providers, finances, "
+        f"ETV, BKA, Hausgeld, Rücklage, Wirtschaftsplan, Beschlüsse, contractor "
+        f"relationships. Routes to detail via 02_buildings/, 03_people/, "
+        f"04_dienstleister/, 05_finances/, 06_skills.md, 07_timeline.md."
     )
     out = [_frontmatter(name, desc)]
+
+    out.append(f"# {lie.get('name', lie_id)} — Living Context\n\n")
+    out.append(
+        f"> 1 Verwalter, {len(gebaeude)} Häuser, {len(einheiten)} Einheiten, "
+        f"{len(eigentuemer)} Eigentümer, {len(mieter)} Mieter, "
+        f"{len(dienstleister)} Dienstleister. WEG-Konto "
+        f"{lie.get('weg_bankkonto_bank', '?')}, Rücklage at separate IBAN.\n\n"
+    )
+    out.append(
+        "**See also:** @05_finances/overview.md · @06_skills.md · @07_timeline.md · @log.md\n\n"
+    )
 
     rows = ["| ID | Hausnr | Units | Stories | Elevator |", "|---|---|---|---|---|"]
     for g in gebaeude:
@@ -129,33 +154,52 @@ def render_lie_state(stammdaten: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def render_log() -> str:
+def render_log(stammdaten: dict[str, Any] | None = None) -> str:
+    lie = (stammdaten or {}).get("liegenschaft", {})
+    lie_id = lie.get("id", "this property")
     desc = (
-        "Property event log. Append-only chronological record of ingests, queries, "
-        "lint passes. Each entry begins `## [<iso-date>] <kind> | <summary>`."
+        f"Event log for {lie_id} ({lie.get('name', '')}). Append-only chronological "
+        f"record of ingests, queries, lint passes, conflict resolutions, and human "
+        f"edits. Each entry begins `## [<iso-date>] <kind> | <summary>` so it stays "
+        f"grep-parseable: `grep '^## \\[' log.md | tail -20` returns the last 20 "
+        f"events. Read for timeline reconstruction, recent-activity context, audit "
+        f"trail, or to seed Hermes loop replay."
     )
     return (
         _frontmatter("property-log", desc)
-        + _section("Log", _agent_managed_comment("append-only, one ## entry per event"))
+        + _agent_managed_comment("append-only; each entry is `## [<iso>] <kind> | <summary>`")
+        + "\n"
         + _human_notes_footer()
     )
 
 
-def render_skills() -> str:
+def render_skills(stammdaten: dict[str, Any] | None = None) -> str:
+    lie = (stammdaten or {}).get("liegenschaft", {})
+    lie_id = lie.get("id", "this property")
     desc = (
-        "Procedural memory for this property — one ## entry per extracted skill, each "
-        "with its own skills.md frontmatter (name + description). The Linter Hermes "
-        "inner loop writes here when complexity_score > 5. Read for repeated procedures "
-        "(e.g. heating-emergency-after-hours, verwalterbeschluss-lookup)."
+        f"Procedural memory for {lie_id} ({lie.get('name', '')}) — one ## entry per "
+        f"extracted skill, each with its own skills.md frontmatter (name + "
+        f"description). The Linter Hermes inner loop writes here when "
+        f"complexity_score > 5 or when a multi-step trajectory recurs. Read for "
+        f"repeated procedures specific to this property: heating-emergency-after-hours, "
+        f"verwalterbeschluss-lookup, rechnungsfreigabe-flow, mahnung-eskalation, "
+        f"ETV-vorbereitung, BKA-quartalslauf. Cross-references DL-, MIE-, EIG- "
+        f"entities mentioned in trigger conditions."
     )
     return _frontmatter("property-skills", desc) + _human_notes_footer()
 
 
-def render_timeline() -> str:
+def render_timeline(stammdaten: dict[str, Any] | None = None) -> str:
+    lie = (stammdaten or {}).get("liegenschaft", {})
+    lie_id = lie.get("id", "this property")
+    n_haus = len((stammdaten or {}).get("gebaeude", []))
     desc = (
-        "Full chronology of this property — overflow from Recent Events ring buffers "
-        "across all files. Append-only. Read when reconstructing history beyond the "
-        "last 50 events."
+        f"Full chronology for {lie_id} ({lie.get('name', '')}) — overflow from "
+        f"`Recent Events` ring buffers across the Liegenschaft, all {n_haus} "
+        f"buildings, every unit, owner, tenant, and service provider. Append-only, "
+        f"oldest at bottom. Read when reconstructing history beyond the last 50 "
+        f"events of any file, doing year-over-year comparison, preparing an ETV "
+        f"report, or auditing an Eigentümer / Dienstleister relationship over time."
     )
     return (
         _frontmatter("property-timeline", desc)
@@ -164,12 +208,18 @@ def render_timeline() -> str:
     )
 
 
-def render_pending_review() -> str:
+def render_pending_review(stammdaten: dict[str, Any] | None = None) -> str:
+    lie = (stammdaten or {}).get("liegenschaft", {})
+    lie_id = lie.get("id", "this property")
     desc = (
-        "Open conflicts awaiting PM resolution. The Patcher writes here when a new fact "
-        "contradicts an existing keyed bullet/row, or when a vocab/schema check fails. "
-        "Each entry lists both claims, both sources, timestamps. Resolve in-place; the "
-        "Linter clears resolved entries on next run."
+        f"Open conflicts for {lie_id} awaiting PM resolution. The Patcher writes "
+        f"here when a new fact contradicts an existing keyed bullet/row (status flip, "
+        f"date drift, amount delta), when a vocab/schema check fails, or when the "
+        f"Hermes outer loop proposes a schema change. Each entry lists both claims, "
+        f"both sources, timestamps, and the file/section affected. Resolve in-place "
+        f"by editing or deleting the entry, or append `**Approved by:** <pm>` to "
+        f"approve a schema proposal; the Linter clears resolved entries on next run. "
+        f"Read daily during PM triage."
     )
     return (
         _frontmatter("pending-review", desc)
@@ -180,18 +230,29 @@ def render_pending_review() -> str:
 
 def render_finances_overview(stammdaten: dict[str, Any]) -> str:
     lie = stammdaten["liegenschaft"]
+    lie_id = lie["id"]
     mieter = stammdaten.get("mieter", [])
+    eigentuemer = stammdaten.get("eigentuemer", [])
     dienstleister = stammdaten.get("dienstleister", [])
     contracted = [d for d in dienstleister if d.get("vertrag_monatlich")]
+    active = sum(1 for m in mieter if m.get("mietende") is None)
+    monthly_contracts = sum(d.get("vertrag_monatlich") or 0 for d in contracted)
     desc = (
-        f"Financial overview for {lie['id']}. Lists the three operating bank accounts "
-        f"and high-level counts (active tenancies, contracted dienstleister)."
+        f"Financial overview for {lie_id} ({lie.get('name', '')}). Three operating "
+        f"bank accounts: WEG-Konto at {lie.get('weg_bankkonto_bank', '?')}, Rücklage "
+        f"(separate IBAN), Verwalter-Konto at {lie.get('verwalter_bank', '?')}. "
+        f"{active} active tenancies, {len(eigentuemer)} owners on Hausgeld plan, "
+        f"{len(contracted)} contracted dienstleister (€{monthly_contracts:.0f}/month "
+        f"baseline). Read for high-level finance state. Drill into reconciliation.md "
+        f"for bank ⋈ invoice anomalies, invoices/<YYYY-MM>/ for individual Rechnungen. "
+        f"For per-tenant payment history, route to 03_people/mieter/MIE-XX.md; for "
+        f"per-owner Hausgeld ledger, route to 03_people/eigentuemer/EIG-XX.md."
     )
     bullets = [
         _bullet(f"WEG-Konto IBAN: `{lie.get('weg_bankkonto_iban', '')}`"),
         _bullet(f"Rücklage IBAN: `{lie.get('ruecklage_iban', '')}`"),
         _bullet(f"Verwalter IBAN: `{lie.get('verwalter_iban', '')}`"),
-        _bullet(f"Active tenancies: {sum(1 for m in mieter if m.get('mietende') is None)}"),
+        _bullet(f"Active tenancies: {active}"),
         _bullet(f"Contracted dienstleister: {len(contracted)}"),
     ]
     return (
@@ -201,11 +262,17 @@ def render_finances_overview(stammdaten: dict[str, Any]) -> str:
     )
 
 
-def render_finances_reconciliation() -> str:
+def render_finances_reconciliation(stammdaten: dict[str, Any] | None = None) -> str:
+    lie = (stammdaten or {}).get("liegenschaft", {})
+    lie_id = lie.get("id", "this property")
     desc = (
-        "Reconciliation report — bank tx ⋈ invoices ⋈ stammdaten with seeded anomalies "
-        "from data/bank/error_types. Read to surface wrong IBAN, missing reference, "
-        "duplicates, amount mismatches."
+        f"Reconciliation report for {lie_id} — bank tx ⋈ invoices ⋈ stammdaten with "
+        f"seeded anomalies from data/bank/error_types. Surfaces wrong IBAN, missing "
+        f"reference, duplicates, amount mismatches, orphan transactions, and "
+        f"Buchungsfehler. One row per anomaly, latest at top. Read when investigating "
+        f"a payment dispute, doing month-end close, preparing the BKA, or auditing a "
+        f"Dienstleister Rechnungslauf. Cross-references DL-XXX (payee), INV-XXXXX "
+        f"(invoice source), TX-XXXXX (bank transaction)."
     )
     return (
         _frontmatter("finances-reconciliation", desc)
@@ -217,12 +284,27 @@ def render_finances_reconciliation() -> str:
 def render_haus_index(haus: dict[str, Any], stammdaten: dict[str, Any]) -> str:
     haus_id = haus["id"]
     einheiten = _einheiten_for_haus(haus_id, stammdaten.get("einheiten", []))
+    lie = stammdaten.get("liegenschaft", {})
+    lie_id = lie.get("id", "")
+    eh_ids = sorted(e["id"] for e in einheiten)
+    if len(eh_ids) > 1:
+        eh_range = f"{eh_ids[0]}..{eh_ids[-1]}"
+    elif eh_ids:
+        eh_range = eh_ids[0]
+    else:
+        eh_range = "no units"
     desc = (
-        f"Building {haus_id} (Hausnr {haus.get('hausnr', '')}) — "
-        f"{haus.get('einheiten', '')} units across {haus.get('etagen', '')} floors, "
-        f"{'with' if haus.get('fahrstuhl') else 'no'} elevator. Read for unit "
-        f"overviews, open issues affecting this building, recent events, and "
-        f"contractors currently working here."
+        f"Building {haus_id} (Hausnr {haus.get('hausnr', '')}) of "
+        f"{lie.get('name', lie_id)} (parent {lie_id}). {haus.get('einheiten', '')} "
+        f"apartments {eh_range}, Baujahr {haus.get('baujahr', '?')}, "
+        f"{haus.get('etagen', '?')} Etagen, "
+        f"{'with' if haus.get('fahrstuhl') else 'no'} Fahrstuhl. Use for "
+        f"building-specific questions: physical state, roof, façade, heating, "
+        f"building-wide repairs, fire safety (BetrSichV / DGUV V3), Wartung, "
+        f"building-level tenant issues, Hausordnung, Schlüsselverwaltung. For "
+        f"owner / finance / ETV / BKA / Hausgeld questions, route up to "
+        f"{lie_id}/index.md. For unit-level tenancy or repair history, drill into "
+        f"units/EH-XX.md."
     )
     summary_bullets = [
         _bullet(f"Hausnr: {haus.get('hausnr', '')}"),
@@ -260,11 +342,50 @@ def render_einheit(einheit: dict[str, Any], stammdaten: dict[str, Any]) -> str:
     haus_id = einheit.get("haus_id", "")
     mieter = _mieter_for_einheit(eh_id, stammdaten.get("mieter", []))
     eig = _eigentuemer_for_einheit(eh_id, stammdaten.get("eigentuemer", []))
+    lie = stammdaten.get("liegenschaft", {})
+    lie_id = lie.get("id", "")
+
+    if mieter is not None:
+        mie_full = " ".join(filter(None, [mieter.get("vorname"), mieter.get("nachname")])).strip()
+        tenant_part = (
+            f"Current tenant {mieter['id']}"
+            f"{f' {mie_full}' if mie_full else ''} "
+            f"(Mietbeginn {mieter.get('mietbeginn', '?')}, Kaltmiete "
+            f"€{mieter.get('kaltmiete', '?')}). "
+        )
+    elif eig is not None and eig.get("selbstnutzer"):
+        tenant_part = "Selbstnutzer (kein externer Mieter). "
+    else:
+        tenant_part = "Currently leerstehend. "
+
+    if eig is not None:
+        eig_full = " ".join(filter(None, [eig.get("vorname"), eig.get("nachname")])).strip()
+        owner_part = (
+            f"Owner {eig['id']}"
+            f"{f' {eig_full}' if eig_full else ''}"
+            f"{' (Beirat)' if eig.get('beirat') else ''}"
+            f"{' (SEV-Mandat)' if eig.get('sev_mandat') else ''}. "
+        )
+    else:
+        owner_part = "Owner unknown. "
+
+    cross_refs = []
+    if eig:
+        cross_refs.append(f"{eig['id']} (owner)")
+    if mieter:
+        cross_refs.append(f"{mieter['id']} (tenant)")
+    cross_part = (
+        f" Cross-references {' and '.join(cross_refs)}." if cross_refs else ""
+    )
     desc = (
-        f"Unit {eh_id} ({einheit.get('einheit_nr', '')}, {einheit.get('lage', '')}) "
-        f"in {haus_id} — {einheit.get('wohnflaeche_qm', '')} m², "
-        f"{einheit.get('zimmer', '')} rooms. Read for current tenancy, ownership, "
-        f"and unit-specific issue history."
+        f"Apartment {eh_id} ({einheit.get('einheit_nr', '')}, "
+        f"{einheit.get('lage', '')}) in {haus_id} ({lie.get('name', lie_id)}). "
+        f"{einheit.get('wohnflaeche_qm', '?')} m², {einheit.get('zimmer', '?')} "
+        f"Zimmer, MEA {einheit.get('miteigentumsanteil', '?')}. "
+        f"{tenant_part}{owner_part}"
+        f"Use for unit-specific history: tenancy timeline, repair tickets, payment "
+        f"history, complaints, Wohnungsabnahme/-übergabe records, contact log."
+        f"{cross_part} For building-wide context, route up to {haus_id}/index.md."
     )
     facts = [
         _bullet(f"ID: {eh_id}"),
@@ -302,16 +423,40 @@ def render_einheit(einheit: dict[str, Any], stammdaten: dict[str, Any]) -> str:
 def render_eigentuemer(eig: dict[str, Any], stammdaten: dict[str, Any]) -> str:
     eig_id = eig["id"]
     einheiten = stammdaten.get("einheiten", [])
+    lie = stammdaten.get("liegenschaft", {})
+    lie_id = lie.get("id", "")
     full_name = " ".join(filter(None, [eig.get("vorname"), eig.get("nachname")])) or eig.get(
         "firma", ""
     )
+    owned_ids = eig.get("einheit_ids") or []
+    owned_haeuser = sorted({_haus_for_einheit(eh, einheiten) for eh in owned_ids} - {None})
+    multi_haus = len(owned_haeuser) > 1
+    if multi_haus:
+        haus_part = f" across {len(owned_haeuser)} buildings ({', '.join(owned_haeuser)})"
+    elif owned_haeuser:
+        haus_part = f" in {owned_haeuser[0]}"
+    else:
+        haus_part = ""
+    role_flags = ", ".join(
+        flag
+        for flag, on in [
+            ("Beirat", eig.get("beirat")),
+            ("SEV-Mandat", eig.get("sev_mandat")),
+            ("Selbstnutzer", eig.get("selbstnutzer")),
+        ]
+        if on
+    )
+    role_part = f" Roles: {role_flags}." if role_flags else ""
     desc = (
-        f"Owner {eig_id} ({full_name}). Owns "
-        f"{len(eig.get('einheit_ids') or [])} unit(s). "
-        f"{'Beirat. ' if eig.get('beirat') else ''}"
-        f"{'SEV-Mandat. ' if eig.get('sev_mandat') else ''}"
-        f"{'Selbstnutzer. ' if eig.get('selbstnutzer') else ''}"
-        f"Read for owner contact, unit list, payment history, correspondence."
+        f"Eigentümer {eig_id} ({full_name}) of {lie.get('name', lie_id)} ({lie_id}). "
+        f"Owns {len(owned_ids)} unit(s) ({', '.join(owned_ids) or 'none'}){haus_part}."
+        f"{role_part} Email {eig.get('email', '?')}, IBAN "
+        f"`{eig.get('iban', '?')}`. Use for owner-specific queries: contact, unit "
+        f"list, Hausgeld payment history, ETV/Beschluss correspondence, "
+        f"Sondereigentumsverwaltung-Mandat status, "
+        f"{'Beirat decisions, ' if eig.get('beirat') else ''}"
+        f"{'multi-building cross-references, ' if multi_haus else ''}"
+        f"Mahnung-Historie. For per-unit detail, drill into the linked EH-XX.md files."
     )
     contact = [
         _bullet(f"{eig.get('anrede', '')} {full_name}".strip()),
@@ -350,12 +495,23 @@ def render_mieter(mie: dict[str, Any], stammdaten: dict[str, Any]) -> str:
     einheit_id = mie.get("einheit_id", "")
     eig_id = mie.get("eigentuemer_id", "")
     haus_id = _haus_for_einheit(einheit_id, stammdaten.get("einheiten", [])) or "UNKNOWN"
+    lie = stammdaten.get("liegenschaft", {})
+    lie_id = lie.get("id", "")
     full_name = " ".join(filter(None, [mie.get("vorname"), mie.get("nachname")]))
+    mietende = mie.get("mietende")
+    mietende_part = f"Mietende {mietende}" if mietende else "Mietverhältnis aktiv"
     desc = (
-        f"Tenant {mie_id} ({full_name}) in {einheit_id} (building {haus_id}). "
-        f"Mietbeginn {mie.get('mietbeginn', '')}, Kaltmiete "
-        f"{mie.get('kaltmiete', '')}€. Read for contact, tenancy terms, "
-        f"payment history, contact history."
+        f"Mieter {mie_id} ({full_name}) in {einheit_id} ({haus_id}, "
+        f"{lie.get('name', lie_id)}). Mietbeginn {mie.get('mietbeginn', '?')}, "
+        f"{mietende_part}. Kaltmiete €{mie.get('kaltmiete', '?')}, "
+        f"NK-Vorauszahlung €{mie.get('nk_vorauszahlung', '?')}, "
+        f"Kaution €{mie.get('kaution', '?')}. Vermieter (Eigentümer) {eig_id}. "
+        f"Email {mie.get('email', '?')}, IBAN `{mie.get('iban', '?')}`. "
+        f"Use for tenant-specific queries: contact, tenancy terms, Mietzahlungen, "
+        f"Nebenkostenabrechnung-Historie, Reparaturanfragen, Beschwerden, "
+        f"Mahnung-Eskalation, Mietminderung, Kündigung-Schritte. For unit-level "
+        f"context (Wohnungsgröße, Lage, Vorgeschichte) drill into "
+        f"02_buildings/{haus_id}/units/{einheit_id}.md."
     )
     contact = [
         _bullet(f"{mie.get('anrede', '')} {full_name}".strip()),
@@ -386,13 +542,25 @@ def render_mieter(mie: dict[str, Any], stammdaten: dict[str, Any]) -> str:
 
 
 def render_dienstleister(dl: dict[str, Any], stammdaten: dict[str, Any]) -> str:
-    del stammdaten
     dl_id = dl["id"]
+    lie = stammdaten.get("liegenschaft", {})
+    lie_id = lie.get("id", "")
+    monthly = dl.get("vertrag_monatlich")
+    rate = dl.get("stundensatz")
+    contract_part = (
+        f"Monatlicher Vertrag €{monthly:.0f}. " if monthly else "Auftragsbasis (kein Vertrag). "
+    )
+    rate_part = f"Stundensatz €{rate:.0f}. " if rate else ""
     desc = (
-        f"Dienstleister {dl_id} ({dl.get('firma', '')}, {dl.get('branche', '')}). "
-        f"Contact: {dl.get('ansprechpartner', '')}. "
-        f"{'Monthly contract. ' if dl.get('vertrag_monatlich') else ''}"
-        f"Read for service scope, contracts, recent invoices, performance notes."
+        f"Dienstleister {dl_id} ({dl.get('firma', '')}, {dl.get('branche', '')}) "
+        f"contracted by {lie.get('name', lie_id)} ({lie_id}). Ansprechpartner "
+        f"{dl.get('ansprechpartner', '?')}, Email {dl.get('email', '?')}, "
+        f"Telefon {dl.get('telefon', '?')}. {contract_part}{rate_part}"
+        f"IBAN `{dl.get('iban', '?')}`, USt-ID {dl.get('ust_id', '?')}. "
+        f"Use for service-provider queries: scope (Branche {dl.get('branche', '?')}), "
+        f"Verträge, Rechnungen, Wartungs-Intervalle, Notdienst-Eligibility, "
+        f"Performance-Notes, Eskalation, Reklamationen, Zahlungsfreigabe-Historie. "
+        f"For finance-side reconciliation, route to 05_finances/reconciliation.md."
     )
     services = [
         _bullet(f"Firma: {dl.get('firma', '')}"),

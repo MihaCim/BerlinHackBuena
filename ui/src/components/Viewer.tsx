@@ -1,11 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import { FileQuestion, FileWarning } from "lucide-react";
 import { Breadcrumb } from "./Breadcrumb";
 import { FrontmatterCard } from "./FrontmatterCard";
-import { parseMarkdown } from "../lib/markdown";
+import { HumanNotesEditor } from "./HumanNotesEditor";
+import { parseMarkdown, splitAtHumanNotes } from "../lib/markdown";
 import { rehypeStripComments } from "../lib/rehypeStripComments";
 
 type Props = {
@@ -15,8 +16,21 @@ type Props = {
   error: string | null;
 };
 
+const PM_USER = "pm";
+
 export function Viewer({ path, content, loading, error }: Props) {
   const parsed = useMemo(() => parseMarkdown(content), [content]);
+  const split = useMemo(
+    () => splitAtHumanNotes(parsed.content),
+    [parsed.content],
+  );
+  const [notesOverride, setNotesOverride] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNotesOverride(null);
+  }, [path, content]);
+
+  const notesBody = notesOverride ?? split.body;
 
   return (
     <section className="flex h-full min-w-0 flex-col">
@@ -63,9 +77,17 @@ export function Viewer({ path, content, loading, error }: Props) {
                     },
                   }}
                 >
-                  {parsed.content}
+                  {split.above}
                 </ReactMarkdown>
               </div>
+              {split.hasBoundary && (
+                <HumanNotesEditor
+                  path={path}
+                  initialBody={notesBody}
+                  pmUser={PM_USER}
+                  onSaved={(b) => setNotesOverride(b)}
+                />
+              )}
             </article>
           )}
         </div>

@@ -85,17 +85,17 @@ def _render_property(stammdaten: dict[str, Any], property_root: Path) -> None:
     state_path = property_root / "_state.json"
     state = _preserve_bootstrap_timestamp(render_lie_state(stammdaten), state_path)
     _write_json(state_path, state)
-    _write_text(property_root / "log.md", render_log())
-    _write_text(property_root / "_pending_review.md", render_pending_review())
-    _write_text(property_root / "06_skills.md", render_skills())
-    _write_text(property_root / "07_timeline.md", render_timeline())
+    _write_text(property_root / "log.md", render_log(stammdaten))
+    _write_text(property_root / "_pending_review.md", render_pending_review(stammdaten))
+    _write_text(property_root / "06_skills.md", render_skills(stammdaten))
+    _write_text(property_root / "07_timeline.md", render_timeline(stammdaten))
     _write_text(
         property_root / "05_finances" / "overview.md",
         render_finances_overview(stammdaten),
     )
     _write_text(
         property_root / "05_finances" / "reconciliation.md",
-        render_finances_reconciliation(),
+        render_finances_reconciliation(stammdaten),
     )
 
     for haus in stammdaten.get("gebaeude", []):

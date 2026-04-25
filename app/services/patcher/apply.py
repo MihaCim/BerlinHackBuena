@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from app.services.patcher.atomic import atomic_write_text
+from app.services.patcher.git import commit_all, head_sha
 from app.services.patcher.ops import (
     delete_bullet,
     delete_row,
@@ -59,7 +59,7 @@ def apply_patch_plan(
             event_id=event_id,
             applied_ops=0,
             deferred_ops=0,
-            commit_sha=_head_sha(wiki_dir),
+            commit_sha=head_sha(wiki_dir),
             idempotent=True,
         )
 
@@ -77,7 +77,7 @@ def apply_patch_plan(
     if issues:
         touched.add(property_root / "_pending_review.md")
 
-    commit_sha = _git_commit(
+    commit_sha = commit_all(
         wiki_dir,
         message=f"ingest({event_id}): {str(plan.get('summary', 'patch')).strip()}",
     )
@@ -203,34 +203,6 @@ def _feedback_contains_event(path: Path, event_id: str) -> bool:
         if record.get("event_id") == event_id:
             return True
     return False
-
-
-def _git(args: list[str], cwd: Path, *, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(  # noqa: S603
-        ["git", *args],  # noqa: S607
-        cwd=cwd,
-        check=check,
-        capture_output=True,
-        text=True,
-    )
-
-
-def _git_commit(wiki_dir: Path, *, message: str) -> str | None:
-    _git(["add", "-A"], cwd=wiki_dir)
-    diff = _git(["diff", "--cached", "--quiet"], cwd=wiki_dir, check=False)
-    if diff.returncode == 0:
-        return _head_sha(wiki_dir)
-    if diff.returncode != 1:
-        raise subprocess.CalledProcessError(diff.returncode, diff.args, diff.stdout, diff.stderr)
-    _git(["commit", "-m", message], cwd=wiki_dir)
-    return _head_sha(wiki_dir)
-
-
-def _head_sha(wiki_dir: Path) -> str | None:
-    result = _git(["rev-parse", "HEAD"], cwd=wiki_dir, check=False)
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip()
 
 
 def _reindex_touched_files(

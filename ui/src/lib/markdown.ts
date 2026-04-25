@@ -26,6 +26,21 @@ export function parseMarkdown(raw: string): ParsedDoc {
   return { data, content };
 }
 
+const HUMAN_NOTES_HEADING = "# Human Notes";
+
+export function splitAtHumanNotes(content: string): {
+  above: string;
+  hasBoundary: boolean;
+  body: string;
+} {
+  const idx = content.indexOf(HUMAN_NOTES_HEADING);
+  if (idx === -1) return { above: content, hasBoundary: false, body: "" };
+  const headingEnd = idx + HUMAN_NOTES_HEADING.length;
+  const above = content.slice(0, idx).replace(/\n+$/, "\n");
+  const body = content.slice(headingEnd).replace(/^\n+/, "").replace(/\s+$/, "");
+  return { above, hasBoundary: true, body };
+}
+
 export function flattenTree(
   node: { name: string; path: string; type: "file" | "dir"; children?: Array<unknown> | null },
   out: Array<{ name: string; path: string }> = [],
