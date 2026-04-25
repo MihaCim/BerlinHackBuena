@@ -1,0 +1,76 @@
+{
+  "cli_version": "0.5.6",
+  "checkpoint_id": "6055a5fd5d40",
+  "session_id": "ses_23a484153ffezHOhXqzsxRW1vr",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-25T17:43:38.867073297Z",
+  "branch": "adi_dev",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "README.md",
+    "app/ingestion.py",
+    "scripts/curl_ingest_base.sh"
+  ],
+  "agent": "OpenCode",
+  "model": "gpt-5.5",
+  "turn_id": "9aa593efaf87",
+  "token_usage": {
+    "input_tokens": 111222,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1160704,
+    "output_tokens": 5343,
+    "api_call_count": 31
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-25T17:43:38.845550064Z",
+    "agent_lines": 3,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 4,
+    "total_committed": 3,
+    "total_lines_changed": 7,
+    "agent_percentage": 42.857142857142854,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 1747,
+      "user_lines_removed": 4,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".gitignore": 2,
+        ".opencode/plugins/entire.ts": 216,
+        ".python-version": 1,
+        "README.md": 6,
+        "app/ingestion.py": 385,
+        "app/main.py": 43,
+        "main.py": 9,
+        "pyproject.toml": 11,
+        "uv.lock": 1074
+      },
+      "user_removed_per_file": {
+        "README.md": 4
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1178,
+      "agent_lines_removed": 4
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1178,
+      "agent_lines_removed": 4
+    }
+  ]
+}
