@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
+        env_prefix="APP_",
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
