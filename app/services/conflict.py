@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app.schemas.patch_plan import PatchPlan
-from app.services.patcher.atomic import atomic_write_text
+from app.services.patcher.pending_review import append_entries as _append_pending_entries
 
 _DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
 _MONEY_RE = re.compile(r"(?:€\s*)?(-?\d+(?:[.\s]\d{3})*(?:,\d{2}|\.\d{2}))\s*(?:€|EUR)?")
@@ -60,29 +60,22 @@ def scan_patch_plan_conflicts(
 def append_conflicts(property_root: Path, issues: list[ConflictIssue]) -> None:
     if not issues:
         return
-    path = property_root / "_pending_review.md"
-    text = path.read_text(encoding="utf-8") if path.exists() else _default_pending_review()
-    marker = "\n# Human Notes"
-    boundary = text.find(marker)
-    suffix = text[boundary:] if boundary != -1 else "\n# Human Notes\n"
-    body = text[:boundary].rstrip() if boundary != -1 else text.rstrip()
-    entries = []
-    for issue in issues:
-        entries.append(
-            "\n".join(
-                [
-                    "",
-                    f"### conflict: {issue.key}",
-                    f"- file: `{issue.file}`",
-                    f"- section: `{issue.section}`",
-                    f"- reason: {issue.reason}",
-                    f"- existing: `{issue.existing}`",
-                    f"- incoming: `{issue.incoming}`",
-                    "",
-                ]
-            )
+    entries = [
+        "\n".join(
+            [
+                "",
+                f"### conflict: {issue.key}",
+                f"- file: `{issue.file}`",
+                f"- section: `{issue.section}`",
+                f"- reason: {issue.reason}",
+                f"- existing: `{issue.existing}`",
+                f"- incoming: `{issue.incoming}`",
+                "",
+            ]
         )
-    atomic_write_text(path, body + "\n" + "\n".join(entries) + suffix)
+        for issue in issues
+    ]
+    _append_pending_entries(property_root / "_pending_review.md", entries)
 
 
 def _conflict_for_op(
@@ -224,13 +217,3 @@ def _first_amount(line: str) -> Decimal | None:
     return None
 
 
-def _default_pending_review() -> str:
-    return (
-        "---\n"
-        "name: pending-review\n"
-        "description: Open conflicts awaiting PM resolution.\n"
-        "---\n\n"
-        "## Open Conflicts\n\n"
-        "<!-- agent-managed: one ### entry per conflict -->\n\n"
-        "# Human Notes\n"
-    )

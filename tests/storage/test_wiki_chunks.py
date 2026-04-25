@@ -81,3 +81,22 @@ def test_query_raises_if_no_index(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="build_index"):
         store.query("Heizung")
+
+
+def test_query_stems_german_plural(tmp_path: Path) -> None:
+    store = open_wiki_chunks(tmp_path / "wiki.duckdb")
+    store.upsert("LIE-001", "a.md", "S", "Heizungen sind defekt", ["EH-014"])
+    store.upsert("LIE-001", "b.md", "S", "Aufzug Wartung fällig", ["EH-015"])
+    store.build_index()
+
+    hits = store.query("Heizung")
+    assert len(hits) == 1
+    assert hits[0]["file"] == "a.md"
+
+
+def test_has_property(tmp_path: Path) -> None:
+    store = open_wiki_chunks(tmp_path / "wiki.duckdb")
+    assert store.has_property("LIE-001") is False
+    store.upsert("LIE-001", "f.md", "S", "x", [])
+    assert store.has_property("LIE-001") is True
+    assert store.has_property("LIE-002") is False

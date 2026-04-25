@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
 import duckdb
 
 from app.storage.db import connect
-
-_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
-
-
-def _tokenize(text: str) -> list[str]:
-    return [m.group(0).lower() for m in _TOKEN_RE.finditer(text)]
 
 
 class WikiChunksStore:
@@ -21,6 +14,8 @@ class WikiChunksStore:
         self._index_built = False
 
     def init_schema(self) -> None:
+        self._conn.execute("INSTALL fts;")
+        self._conn.execute("LOAD fts;")
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS wiki_chunks (
@@ -54,12 +49,21 @@ class WikiChunksStore:
             """,
             [property_id, file, section, body, entity_refs],
         )
+        self._index_built = False
+
+    def has_property(self, property_id: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM wiki_chunks WHERE property_id = ? LIMIT 1",
+            [property_id],
+        ).fetchone()
+        return row is not None
 
     def delete_file(self, property_id: str, file: str) -> None:
         self._conn.execute(
             "DELETE FROM wiki_chunks WHERE property_id = ? AND file = ?",
             [property_id, file],
         )
+        self._index_built = False
 
     def find_by_entity(self, property_id: str, entity_id: str) -> list[dict[str, Any]]:
         rows = self._conn.execute(
@@ -82,6 +86,10 @@ class WikiChunksStore:
         ]
 
     def build_index(self) -> None:
+        self._conn.execute(
+            "PRAGMA create_fts_index('wiki_chunks', 'rowid', 'body', "
+            "stemmer='german', stopwords='none', overwrite=1);"
+        )
         self._index_built = True
 
     def query(
@@ -92,43 +100,40 @@ class WikiChunksStore:
     ) -> list[dict[str, Any]]:
         if not self._index_built:
             raise RuntimeError("call build_index() first")
-
-        sql = "SELECT property_id, file, section, body FROM wiki_chunks"
-        params: list[Any] = []
-        if property_id is not None:
-            sql += " WHERE property_id = ?"
-            params.append(property_id)
-        rows = self._conn.execute(sql, params).fetchall()
-
-        q_tokens = set(_tokenize(q))
-        if not q_tokens:
+        if not q.strip():
             return []
 
-        scored: list[tuple[float, dict[str, Any]]] = []
-        for r in rows:
-            body_tokens = _tokenize(r[3])
-            if not body_tokens:
-                continue
-            body_token_set = set(body_tokens)
-            distinct_hits = len(q_tokens & body_token_set)
-            if distinct_hits == 0:
-                continue
-            term_freq = sum(1 for t in body_tokens if t in q_tokens)
-            score = distinct_hits + term_freq / (len(body_tokens) + 1.0)
-            scored.append(
-                (
-                    score,
-                    {
-                        "property_id": r[0],
-                        "file": r[1],
-                        "section": r[2],
-                        "body": r[3],
-                        "score": score,
-                    },
-                )
-            )
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [hit for _, hit in scored[:limit]]
+        sql = """
+            SELECT property_id, file, section, body, score
+            FROM (
+                SELECT
+                    property_id,
+                    file,
+                    section,
+                    body,
+                    fts_main_wiki_chunks.match_bm25(rowid, ?) AS score
+                FROM wiki_chunks
+            ) t
+            WHERE score IS NOT NULL
+        """
+        params: list[Any] = [q]
+        if property_id is not None:
+            sql += " AND property_id = ?"
+            params.append(property_id)
+        sql += " ORDER BY score DESC LIMIT ?"
+        params.append(limit)
+
+        rows = self._conn.execute(sql, params).fetchall()
+        return [
+            {
+                "property_id": r[0],
+                "file": r[1],
+                "section": r[2],
+                "body": r[3],
+                "score": float(r[4]),
+            }
+            for r in rows
+        ]
 
 
 def open_wiki_chunks(db_path: Path) -> WikiChunksStore:

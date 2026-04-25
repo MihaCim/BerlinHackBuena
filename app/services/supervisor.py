@@ -64,13 +64,17 @@ class Supervisor:
             property_id=event.property_id,
         )
         wiki_chunks_db = _wiki_chunks_db_path(self._settings)
-        if (self._settings.wiki_dir / event.property_id).is_dir():
+        wiki_chunks = open_wiki_chunks(wiki_chunks_db)
+        if (
+            (self._settings.wiki_dir / event.property_id).is_dir()
+            and not wiki_chunks.has_property(event.property_id)
+        ):
             reindex_property(
                 wiki_dir=self._settings.wiki_dir,
                 property_id=event.property_id,
                 db_path=wiki_chunks_db,
             )
-        wiki_chunks = open_wiki_chunks(wiki_chunks_db)
+            wiki_chunks = open_wiki_chunks(wiki_chunks_db)
         sections = locate_sections(
             wiki_chunks=wiki_chunks,
             property_id=event.property_id,

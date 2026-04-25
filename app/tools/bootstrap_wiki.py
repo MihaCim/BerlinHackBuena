@@ -9,6 +9,7 @@ from typing import Any
 import structlog
 
 from app.core.config import get_settings
+from app.services.reindex import reindex_property
 from app.tools.wiki_templates import (
     render_dienstleister,
     render_eigentuemer,
@@ -157,6 +158,7 @@ def bootstrap(
     wiki_dir: Path,
     *,
     run_git_init: bool = True,
+    wiki_chunks_db: Path | None = None,
 ) -> Path:
     """Render wiki skeleton from stammdaten.json under <wiki_dir>/<LIE-id>/.
 
@@ -191,6 +193,15 @@ def bootstrap(
     if run_git_init:
         _git_init_and_commit(wiki_dir, lie_id)
 
+    if wiki_chunks_db is not None:
+        wiki_chunks_db.parent.mkdir(parents=True, exist_ok=True)
+        sections = reindex_property(
+            wiki_dir=wiki_dir,
+            property_id=lie_id,
+            db_path=wiki_chunks_db,
+        )
+        log.info("bootstrap_indexed", lie_id=lie_id, sections=sections)
+
     return property_root
 
 
@@ -222,11 +233,24 @@ def main() -> None:
         help="Skip git init and commit.",
     )
 
+    parser.add_argument(
+        "--wiki-chunks-db",
+        type=Path,
+        default=settings.output_dir / "wiki_chunks.duckdb",
+        help="DuckDB path for wiki_chunks (used by /properties + supervisor locate).",
+    )
+    parser.add_argument(
+        "--no-index",
+        action="store_true",
+        help="Skip wiki_chunks indexing.",
+    )
+
     args = parser.parse_args()
     property_root = bootstrap(
         args.stammdaten,
         args.wiki_dir,
         run_git_init=not args.no_git,
+        wiki_chunks_db=None if args.no_index else args.wiki_chunks_db,
     )
     log.info("bootstrap_done", property_root=str(property_root))
 

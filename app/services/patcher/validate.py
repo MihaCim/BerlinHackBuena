@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.services.patcher.atomic import atomic_write_text
+from app.services.patcher.pending_review import append_entries as _append_pending_entries
 
 
 @dataclass(frozen=True)
@@ -107,42 +107,18 @@ def append_pending_review(property_root: Path, issues: Iterable[ValidationIssue]
     issues = list(issues)
     if not issues:
         return
-    path = property_root / "_pending_review.md"
-    text = path.read_text(encoding="utf-8") if path.exists() else _default_pending_review()
-    marker = "\n# Human Notes"
-    boundary = text.find(marker)
-    if boundary == -1:
-        boundary = len(text)
-        suffix = "\n# Human Notes\n"
-    else:
-        suffix = text[boundary:]
-
-    entries = []
     now = datetime.now(UTC).isoformat()
-    for issue in issues:
-        op_name = issue.op.get("op", "unknown")
-        entries.append(
-            "\n".join(
-                [
-                    "",
-                    f"### {now} vocab validation failed",
-                    f"- reason: {issue.reason}",
-                    f"- op: `{op_name}`",
-                    f"- payload: `{dict(issue.op)}`",
-                    "",
-                ]
-            )
+    entries = [
+        "\n".join(
+            [
+                "",
+                f"### {now} vocab validation failed",
+                f"- reason: {issue.reason}",
+                f"- op: `{issue.op.get('op', 'unknown')}`",
+                f"- payload: `{dict(issue.op)}`",
+                "",
+            ]
         )
-    atomic_write_text(path, text[:boundary].rstrip() + "\n" + "\n".join(entries) + suffix)
-
-
-def _default_pending_review() -> str:
-    return (
-        "---\n"
-        "name: pending-review\n"
-        "description: Open conflicts awaiting PM resolution.\n"
-        "---\n\n"
-        "## Open Conflicts\n\n"
-        "<!-- agent-managed: one ### entry per conflict -->\n\n"
-        "# Human Notes\n"
-    )
+        for issue in issues
+    ]
+    _append_pending_entries(property_root / "_pending_review.md", entries)
