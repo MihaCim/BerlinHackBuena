@@ -1,0 +1,106 @@
+Good. I have what I need. ADK decision made — reasoning below, then the overview.
+
+---
+
+**ADK Decision: Full Orchestration Skeleton (not just inference)**
+
+ADK provides `SequentialAgent`, `ParallelAgent`, and `LoopAgent` as built-in workflow primitives, and its event-driven runtime orchestrates agents, tools, and persistent state into cohesive applications. The Hermes Loop maps onto these primitives directly — the 6 steps are not metaphors, they are ADK agent nodes. Using ADK as inference-only would waste its core value and produce a weaker architecture story for judges. Decision: ADK is the skeleton that implements the Hermes Loop as a composable multi-agent graph.
+
+### PRD Overview for Team Alignment
+
+---
+
+**What we are building**
+
+A pipeline that ingests the WEG Immanuelkirchstraße 26 dataset — 6,500 emails, 194 invoices, 135 letters, 1,619 bank transactions, plus 10 daily incremental delta packs — and compresses it into a single `building.md` per property. That file is fetched by an external AI agent via API. The agent never touches raw source data again.
+
+---
+
+**The three problems we solve (and how the data surfaces them)**
+
+| Hard Problem | Where it lives in this dataset |
+|---|---|
+| Schema Alignment | `stammdaten.json` has canonical IDs (`EIG-007`, `EH-023`, `DL-004`). Emails name people by surname or email address. Bank transactions reference IBAN or `referenz_id`. Invoices use `INV-NNNN`. The resolver must unify all of these into one entity graph. |
+| Surgical Updates | `incremental/day-01..day-10` delivers ~3 emails + 1 invoice + 1 bank tx per day. Each delta must patch only the relevant section of `building.md` — nothing else changes. |
+| Signal vs. Noise | 6,500 emails contain routine acknowledgments, spam, and scheduling chatter. Only a fraction — maintenance facts, legal notices, Hausgeld disputes, Kaution records — belong in `building.md`. |
+
+---
+
+**System components (MVP, 48h scope)**
+
+**1. Source Ingestion Layer**
+Parsers for `.eml` (quoted-printable), invoice PDF (text extraction), German CSV (semicolon, `DD.MM.YYYY`, comma decimals), and `stammdaten.json`. Handles the format gotchas in the dataset (IBAN spacing, `bank_index.csv` vs CAMT convention difference). Feeds a normalized event stream.
+
+**2. Schema Resolver** *(Hard Problem 1)*
+Entity canonicalization engine. Input: raw string from any source (name, email, IBAN, INV-ref). Output: canonical stammdaten ID + confidence score. Uses `stammdaten.json` as the golden source. LLM-assisted fuzzy match for unstructured email bodies. Implemented as an ADK `FunctionTool` callable by any agent in the graph.
+
+**3. Signal Filter** *(Hard Problem 3)*
+Relevance scorer. Each ingested event gets a `[HIGH / MEDIUM / LOW / NOISE]` score against a category taxonomy (maintenance facts, legal obligations, financial anomalies, tenant lifecycle events). Only HIGH and MEDIUM proceed to update. NOISE is logged but discarded. Gemini-2.5-flash does the scoring pass.
+
+**4. Surgical Update Engine** *(Hard Problem 2)*
+Parses `building.md` to a Markdown AST using `marko`. Diffs the incoming fact against the current state of the target section. Applies a merge that: (a) preserves `<!-- bac:human -->` sentinel nodes — any paragraph carrying this tag is architecturally immutable, (b) injects provenance footnote `[^SRC-YYYYMMDD-ID]`, (c) updates `## Audit Trail` with timestamp and confidence. No full-file regeneration under any circumstances.
+
+**5. Hermes Complexity Trigger**
+Monitors tool-call count per ingestion task. If `>5` tool calls are required to resolve an entity or classify a document, flags the trajectory as a Learning Opportunity and runs skill extraction — distilling the resolution path into `## Procedural Memory` in `building.md`. Implemented as an ADK `LoopAgent`.
+
+**6. building.md Output Schema**
+Four canonical sections consumed by the external agent: `## Core Metadata` (property, parties, risk profile), `## Procedural Memory` (extracted skills), `## Physical State & Facts` (keybox codes, maintenance dates, utility contracts — all provenance-tagged), `## Audit Trail` (source citations, confidence scores, timestamps). Served via a FastAPI GET endpoint.
+
+---
+
+**Tool integration map**
+
+| Tool | Role in pipeline | Demo-critical? |
+|---|---|---|
+| **Google ADK** | Orchestration skeleton for all 6 Hermes Loop steps; `SequentialAgent` for ingestion, `LoopAgent` for complexity trigger | Yes — it is the pipeline |
+| **Entiure** | Persistent session context for the Wiki Index Agent; stores current `building.md` state and entity graph across calls | Yes — enables stateful incremental updates |
+| **Aikido** | Security scan on the FastAPI surface that serves `building.md`; pentest the GET endpoint and provenance footnote injection path | Visible in demo, not live-critical |
+| **Tavily** | Real-time lookup triggered by Signal Filter when a contractor (`DL-NNN`) needs current regulatory or contact verification | Stretch goal, but demo-able in 60 seconds |
+
+---
+
+**Human edit protection convention (my design — needs your sign-off)**
+
+Proposed: any paragraph manually edited by a property manager carries a `<!-- bac:human -->` HTML comment. The AST merger treats these nodes as immutable — it will never overwrite, append to, or delete them. A `## 🔒 Manager Notes` section is additionally treated as immutable at the section level regardless of sentinel presence. Simple, auditable, requires zero UI.
+
+---
+
+**Demo scenario (designed for Buena judges)**
+
+*"Day 10 of January 2026. The elevator in Haus-12 breaks."*
+
+Day-10 delta arrives: one email from the elevator contractor (Schindler), one invoice `INV-00194`, one bank debit. Live, in front of judges:
+
+1. Engine ingests email → Signal Filter: **HIGH** (maintenance event, physical asset affected)
+2. Schema Resolver: "Schindler Aufzüge GmbH" → `DL-007`, linked to `HAUS-12`, units `EH-011` through `EH-018`
+3. Surgical Update: patches only `## Physical State & Facts / Aufzug` — 4 lines change, 847 lines untouched
+4. Provenance tag injected: `[^SRC-EMAIL-20260110-EMAIL-06489]`
+5. External agent queries: *"What is the current elevator status for Haus-12?"* — fetches `building.md` via API, answers in one call, zero ERP queries
+
+Three hard problems, all visible in 90 seconds.
+
+---
+
+**Stretch goals (post-MVP)**
+
+Periodic Nudge (background contradiction detection), User Modeling (manager layout preferences), Tavily real-time contractor lookup, multi-property `index.md` aggregation.
+
+---
+
+**Top risks**
+
+1. PDF invoice parsing quality on scanned documents — mitigation: use text-layer extraction first, fallback to Gemini vision
+2. German CSV format gotchas causing silent join failures — mitigation: defensive parser with explicit format flags, tested on day-01 delta before building anything else
+3. ADK + Entiure integration time cost — mitigation: ADK session state can substitute for Entiure in extremis; Entiure is the upgrade path, not the foundation
+
+---
+
+**What's missing, wrong, or needs different emphasis?**
+
+Two things I want your explicit sign-off on before writing the full PRD:
+
+**A.** The `<!-- bac:human -->` sentinel convention — does this work for how Buena imagines property managers interacting with the system, or do they assume a more locked-down UI where humans never edit markdown directly?
+
+**B.** Demo scenario — the elevator story is clean and concrete. But if Buena's judges are more interested in financial reconciliation (the `error_types` anomalies in `bank_index.csv` are a rich sub-challenge), we could pivot the demo to: *"invoice arrives, bank transaction doesn't match referenz_id, engine flags anomaly, patches Audit Trail with contradiction warning."* Which story lands harder with this specific judging panel?
+
+Your call on both. Then I write the full PRD.
