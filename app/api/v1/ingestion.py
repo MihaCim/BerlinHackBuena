@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.config import Settings, get_settings
-from app.ingestion import IngestionService
+from app.services.ingestion import IngestionService
 
 router = APIRouter()
 
