@@ -18,6 +18,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY pyproject.toml uv.lock ./
 COPY app ./app
+COPY schema ./schema
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
@@ -29,15 +30,26 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     APP_ENV=prod \
+    APP_DATA_DIR=/app/data \
+    APP_OUTPUT_DIR=/app/output \
+    APP_WIKI_DIR=/app/wiki \
+    APP_NORMALIZE_DIR=/app/normalize \
     PORT=8000
 
-RUN groupadd --system --gid 1000 app \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 1000 app \
     && useradd --system --uid 1000 --gid app --create-home --home-dir /home/app app
 
 WORKDIR /app
 
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --chown=app:app app ./app
+COPY --chown=app:app schema ./schema
+
+RUN mkdir -p /app/data /app/output /app/wiki /app/normalize \
+    && chown -R app:app /app/data /app/output /app/wiki /app/normalize
 
 USER app
 

@@ -39,6 +39,8 @@ tests
 docs
 *.md
 !README.md
+!schema
+!schema/**
 
 # docker
 Dockerfile*

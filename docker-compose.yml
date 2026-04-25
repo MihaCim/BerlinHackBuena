@@ -9,10 +9,16 @@ services:
       - "8000:8000"
     environment:
       APP_ENV: prod
-      LOG_LEVEL: INFO
-      OUTPUT_DIR: /app/output
+      APP_LOG_LEVEL: INFO
+      APP_DATA_DIR: /app/data
+      APP_OUTPUT_DIR: /app/output
+      APP_WIKI_DIR: /app/wiki
+      APP_NORMALIZE_DIR: /app/normalize
     volumes:
+      - ./data:/app/data:ro
       - output:/app/output
+      - wiki:/app/wiki
+      - normalize:/app/normalize
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health').status==200 else 1)"]
       interval: 30s
@@ -20,7 +26,6 @@ services:
       retries: 3
       start_period: 5s
     restart: unless-stopped
-    profiles: ["prod", "default"]
 
   api-dev:
     build:
@@ -33,15 +38,24 @@ services:
       - "8000:8000"
     environment:
       APP_ENV: dev
-      LOG_LEVEL: DEBUG
-      OUTPUT_DIR: /app/output
+      APP_LOG_LEVEL: DEBUG
+      APP_DATA_DIR: /app/data
+      APP_OUTPUT_DIR: /app/output
+      APP_WIKI_DIR: /app/wiki
+      APP_NORMALIZE_DIR: /app/normalize
     volumes:
       - ./app:/app/app
+      - ./schema:/app/schema:ro
+      - ./data:/app/data:ro
       - ./pyproject.toml:/app/pyproject.toml
       - ./uv.lock:/app/uv.lock
       - output:/app/output
+      - wiki:/app/wiki
+      - normalize:/app/normalize
     command: ["uv", "run", "fastapi", "dev", "app/main.py", "--host", "0.0.0.0", "--port", "8000"]
     profiles: ["dev"]
 
 volumes:
   output:
+  wiki:
+  normalize:

@@ -35,6 +35,7 @@ module-root = ""
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+exclude = [".agents"]
 
 [tool.ruff.lint]
 select = [

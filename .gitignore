@@ -13,3 +13,6 @@ build/
 .env.local
 *.duckdb
 *.duckdb.wal
+normalize/
+output/
+wiki/
