@@ -1,22 +1,22 @@
 [project]
 name = "buena-context"
 version = "0.1.0"
-description = "Living building memory - context compiler for property management"
+description = "Living building memory — context compiler for property management"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.136.1",
-    "httpx>=0.28",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
     "pypdf>=5.0.0",
     "structlog>=24.4",
+    "httpx>=0.28",
 ]
 
 [dependency-groups]
 dev = [
-    "anyio>=4.7",
     "pytest>=8.3",
     "pytest-asyncio>=0.25",
+    "anyio>=4.7",
     "ruff>=0.8",
     "ty>=0.0.1a1",
 ]
@@ -29,32 +29,31 @@ build-backend = "uv_build"
 module-name = "app"
 module-root = ""
 
+# ---- Ruff (lint + format) ----
 [tool.ruff]
 target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]
 select = [
-    "E",
-    "F",
-    "W",
-    "I",
-    "B",
-    "UP",
-    "ASYNC",
-    "S",
-    "SIM",
-    "RUF",
-    "PL",
-    "TID",
-    "PT",
-    "ANN",
-    "FAST",
+    "E", "F", "W",      # pyflakes/pycodestyle
+    "I",                # isort
+    "B",                # bugbear
+    "UP",               # pyupgrade
+    "ASYNC",            # async best practices
+    "S",                # bandit security
+    "SIM",              # simplify
+    "RUF",              # ruff-specific
+    "PL",               # pylint subset
+    "TID",              # tidy imports
+    "PT",               # pytest style
+    "ANN",              # type annotations
+    "FAST",             # fastapi-specific
 ]
 ignore = [
-    "ANN401",
-    "PLR0913",
-    "S101",
+    "ANN401",           # allow Any in narrow cases
+    "PLR0913",          # many args ok in routes
+    "S101",             # assert ok in tests
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -64,9 +63,11 @@ ignore = [
 quote-style = "double"
 docstring-code-format = true
 
+# ---- ty (type checker) ----
 [tool.ty.src]
 include = ["app", "tests"]
 
+# ---- pytest ----
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
