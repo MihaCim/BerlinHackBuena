@@ -63,9 +63,9 @@ uv sync
 
 uv run uvicorn app.main:app --reload
 
-curl -X POST 'http://127.0.0.1:8000/ingest/base'
+curl -X POST 'http://127.0.0.1:8000/api/v1/ingest/base'
 
-curl -X POST 'http://127.0.0.1:8000/ingest/incremental/day-01'
+curl -X POST 'http://127.0.0.1:8000/api/v1/ingest/incremental/day-01'
 ```
 
 ## License

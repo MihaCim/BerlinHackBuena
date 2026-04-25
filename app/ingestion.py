@@ -6,15 +6,15 @@ import json
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from pypdf import PdfReader
-
 
 IGNORED_NAMES = {"DATA_SUMMARY.md", ".DS_Store"}
 
@@ -28,7 +28,7 @@ class Batch:
 
 
 class IngestionService:
-    def __init__(self, data_dir: Path, db_path: Path):
+    def __init__(self, data_dir: Path, db_path: Path) -> None:
         self.data_dir = data_dir
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,7 +48,12 @@ class IngestionService:
     def ingest_all_incremental(self, reprocess: bool = False) -> dict[str, object]:
         incremental_dir = self.data_dir / "incremental"
         if not incremental_dir.exists():
-            return {"batches_total": 0, "batches_ingested": 0, "sources_ingested": 0, "skipped_batches": []}
+            return {
+                "batches_total": 0,
+                "batches_ingested": 0,
+                "sources_ingested": 0,
+                "skipped_batches": [],
+            }
 
         batches = tuple(
             self._incremental_batch(path)
@@ -63,7 +68,12 @@ class IngestionService:
                 "select status, count(*) from ingestion_batches group by status"
             ).fetchall()
             source_counts = con.execute(
-                "select source_type, count(*) from ingestion_sources group by source_type order by source_type"
+                """
+                select source_type, count(*)
+                from ingestion_sources
+                group by source_type
+                order by source_type
+                """
             ).fetchall()
             recent_batches = con.execute(
                 """
@@ -97,7 +107,9 @@ class IngestionService:
                 processed_at = now_iso()
                 con.execute(
                     """
-                    insert into ingestion_batches(batch_id, content_date, source_path, status, processed_at, source_count)
+                    insert into ingestion_batches(
+                        batch_id, content_date, source_path, status, processed_at, source_count
+                    )
                     values (?, ?, ?, ?, ?, ?)
                     on conflict(batch_id) do update set
                         content_date=excluded.content_date,
@@ -122,8 +134,12 @@ class IngestionService:
                         source = self._normalize_source(source_path)
                         self._upsert_source(con, batch.batch_id, source, processed_at)
                         sources_ingested += 1
-                    except Exception as exc:  # Keep batch progress visible for imperfect source files.
-                        batch_errors.append({"source_path": self._relative(source_path), "error": str(exc)})
+                    except (
+                        Exception
+                    ) as exc:  # Keep batch progress visible for imperfect source files.
+                        batch_errors.append(
+                            {"source_path": self._relative(source_path), "error": str(exc)}
+                        )
 
                 con.execute(
                     """
@@ -149,11 +165,15 @@ class IngestionService:
 
         stammdaten_dir = self.data_dir / "stammdaten"
         if stammdaten_dir.exists():
-            batches.append(Batch("base-stammdaten", stammdaten_dir, None, self._files_under(stammdaten_dir)))
+            batches.append(
+                Batch("base-stammdaten", stammdaten_dir, None, self._files_under(stammdaten_dir))
+            )
 
         bank_dir = self.data_dir / "bank"
         if bank_dir.exists():
-            batches.append(Batch("base-bank-2024-2025", bank_dir, None, self._files_under(bank_dir)))
+            batches.append(
+                Batch("base-bank-2024-2025", bank_dir, None, self._files_under(bank_dir))
+            )
 
         for section in ("rechnungen", "briefe", "emails"):
             section_dir = self.data_dir / section
@@ -177,7 +197,9 @@ class IngestionService:
         if manifest_path.exists():
             with manifest_path.open("r", encoding="utf-8") as f:
                 content_date = json.load(f).get("content_date")
-        return Batch(f"incremental-{day_dir.name}", day_dir, content_date, self._files_under(day_dir))
+        return Batch(
+            f"incremental-{day_dir.name}", day_dir, content_date, self._files_under(day_dir)
+        )
 
     def _files_under(self, directory: Path) -> tuple[Path, ...]:
         return tuple(
@@ -210,7 +232,9 @@ class IngestionService:
             payload["summary"] = read_xml_summary(path)
         elif suffix == ".eml":
             payload["content"] = read_email(path)
-            payload["summary"] = {key: payload["content"].get(key) for key in ("subject", "from", "to", "date")}
+            payload["summary"] = {
+                key: payload["content"].get(key) for key in ("subject", "from", "to", "date")
+            }
         elif suffix == ".pdf":
             text, pages = extract_pdf_text(path)
             payload["content"] = {"text": text}
@@ -220,7 +244,9 @@ class IngestionService:
 
         return payload
 
-    def _upsert_source(self, con: sqlite3.Connection, batch_id: str, source: dict[str, Any], processed_at: str) -> None:
+    def _upsert_source(
+        self, con: sqlite3.Connection, batch_id: str, source: dict[str, Any], processed_at: str
+    ) -> None:
         con.execute(
             """
             insert into ingestion_sources(
@@ -258,18 +284,22 @@ class IngestionService:
 
     def _source_type(self, path: Path) -> str:
         rel_parts = path.relative_to(self.data_dir).parts
-        if "emails" in rel_parts or path.suffix.lower() == ".eml":
-            return "email"
-        if "rechnungen" in rel_parts:
-            return "invoice"
-        if "briefe" in rel_parts:
-            return "letter"
-        if "bank" in rel_parts:
-            return "bank"
-        if "stammdaten" in rel_parts:
-            return "master_data"
         if path.name == "incremental_manifest.json":
             return "manifest"
+
+        section_types = {
+            "emails": "email",
+            "rechnungen": "invoice",
+            "briefe": "letter",
+            "bank": "bank",
+            "stammdaten": "master_data",
+        }
+        for section, source_type in section_types.items():
+            if section in rel_parts:
+                return source_type
+
+        if path.suffix.lower() == ".eml":
+            return "email"
         return path.suffix.lower().lstrip(".") or "unknown"
 
     def _batch_done(self, con: sqlite3.Connection, batch_id: str) -> bool:
@@ -353,7 +383,7 @@ def read_csv_summary(path: Path) -> tuple[int, list[str]]:
 
 
 def read_xml_summary(path: Path) -> dict[str, Any]:
-    root = ET.parse(path).getroot()
+    root = ET.parse(path).getroot()  # noqa: S314 - input XML is local challenge data.
     return {"root_tag": strip_namespace(root.tag), "children": len(list(root))}
 
 

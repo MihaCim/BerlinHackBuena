@@ -1,43 +1,38 @@
-from pathlib import Path
+from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from app.ingestion import IngestionService
+import structlog
+from fastapi import FastAPI
 
+from app.api.v1.router import api_router
+from app.core.config import get_settings
+from app.core.logging import configure_logging
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT_DIR / "data"
-DB_PATH = ROOT_DIR / ".local" / "ingestion.sqlite3"
-
-app = FastAPI(title="BerlinHackBuena Ingestion API")
-service = IngestionService(data_dir=DATA_DIR, db_path=DB_PATH)
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+log = structlog.get_logger(__name__)
 
 
-@app.post("/ingest/base")
-def ingest_base(reprocess: bool = Query(default=False)) -> dict[str, object]:
-    if not DATA_DIR.exists():
-        raise HTTPException(status_code=404, detail=f"Data directory not found: {DATA_DIR}")
-    return service.ingest_base(reprocess=reprocess)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    configure_logging(settings)
+    log.info("startup", env=settings.env, version=app.version)
+    yield
+    log.info("shutdown")
 
 
-@app.post("/ingest/incremental/{day}")
-def ingest_incremental_day(day: str, reprocess: bool = Query(default=False)) -> dict[str, object]:
-    try:
-        return service.ingest_incremental_day(day=day, reprocess=reprocess)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(
+        title=settings.app_name,
+        version=settings.version,
+        lifespan=lifespan,
+        docs_url="/docs" if settings.env != "prod" else None,
+        redoc_url=None,
+    )
+    app.include_router(api_router, prefix="/api/v1")
+    return app
 
 
-@app.post("/ingest/incremental")
-def ingest_all_incremental(reprocess: bool = Query(default=False)) -> dict[str, object]:
-    return service.ingest_all_incremental(reprocess=reprocess)
-
-
-@app.get("/ingest/status")
-def ingest_status() -> dict[str, object]:
-    return service.status()
+app = create_app()

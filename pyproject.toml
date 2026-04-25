@@ -1,11 +1,73 @@
 [project]
-name = "berlinhackbuena"
+name = "buena-context"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.12"
+description = "Living building memory - context compiler for property management"
+requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi[standard]>=0.136.1",
+    "httpx>=0.28",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
     "pypdf>=5.0.0",
-    "uvicorn[standard]>=0.34.0",
+    "structlog>=24.4",
 ]
+
+[dependency-groups]
+dev = [
+    "anyio>=4.7",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.8",
+    "ty>=0.0.1a1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+module-root = ""
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "B",
+    "UP",
+    "ASYNC",
+    "S",
+    "SIM",
+    "RUF",
+    "PL",
+    "TID",
+    "PT",
+    "ANN",
+    "FAST",
+]
+ignore = [
+    "ANN401",
+    "PLR0913",
+    "S101",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "ANN", "PLR2004"]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ty.src]
+include = ["app", "tests"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"

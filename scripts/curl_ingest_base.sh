@@ -3,5 +3,5 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 
-curl -sS -X POST "${BASE_URL}/ingest/base" \
+curl -sS -X POST "${BASE_URL}/api/v1/ingest/base" \
   -H "accept: application/json"
