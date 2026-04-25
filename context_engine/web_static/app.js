@@ -18,6 +18,20 @@ const controls = [
   "processIntakeBtn",
 ];
 
+function initTheme() {
+  const stored = localStorage.getItem("buena-theme") || "dark";
+  document.documentElement.dataset.theme = stored;
+  $("themeToggle").textContent = stored === "dark" ? "Light" : "Dark";
+}
+
+function toggleTheme() {
+  const current = document.documentElement.dataset.theme || "dark";
+  const next = current === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem("buena-theme", next);
+  $("themeToggle").textContent = next === "dark" ? "Light" : "Dark";
+}
+
 function useAi() {
   return $("useAi").checked;
 }
@@ -380,6 +394,7 @@ $("processIntakeBtn").addEventListener("click", processIntake);
 $("editContextBtn").addEventListener("click", startContextEdit);
 $("saveContextBtn").addEventListener("click", saveContextEdit);
 $("cancelContextBtn").addEventListener("click", cancelContextEdit);
+$("themeToggle").addEventListener("click", toggleTheme);
 
 document.querySelectorAll("[data-question]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -397,6 +412,8 @@ document.querySelectorAll("[data-view]").forEach((button) => {
     renderPreview();
   });
 });
+
+initTheme();
 
 refreshStatus()
   .then(loadContext)

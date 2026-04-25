@@ -4,19 +4,38 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Buena Context Engine</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Figtree:wght@450;600;700;800&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <div class="ambient-orb orb-one"></div>
-    <div class="ambient-orb orb-two"></div>
-    <main class="app-shell">
-      <aside class="side-rail">
+    <div class="page-shell">
+      <header class="fixed-header">
+        <h1 class="headline">
+          <span>Context</span>
+          <span class="headline-line">
+            <span>Engine</span>
+            <span class="headline-logo" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" fill="none" viewBox="0 0 38 38">
+                <path
+                  fill="currentColor"
+                  fill-rule="evenodd"
+                  d="M19 0c1.147 0 2.1.885 2.185 2.03l.068.917a10.44 10.44 0 0 1 4.2-.876c5.786 0 10.476 4.69 10.476 10.476a10.44 10.44 0 0 1-.877 4.2l.919.068a2.19 2.19 0 0 1 0 4.37l-.918.068a10.44 10.44 0 0 1 .876 4.2c0 5.786-4.69 10.476-10.476 10.476a10.44 10.44 0 0 1-4.2-.877l-.068.919a2.19 2.19 0 0 1-4.37 0l-.068-.918a10.44 10.44 0 0 1-4.2.876c-5.786 0-10.476-4.69-10.476-10.476 0-1.494.313-2.914.876-4.2l-.918-.068a2.191 2.191 0 0 1 0-4.37l.918-.068a10.44 10.44 0 0 1-.876-4.2c0-5.786 4.69-10.476 10.476-10.476 1.493 0 2.914.313 4.2.876l.068-.918A2.191 2.191 0 0 1 19 0ZM7.924 19l-1.38 1.762a7.573 7.573 0 0 0-1.615 4.691 7.618 7.618 0 0 0 7.618 7.618 7.573 7.573 0 0 0 4.691-1.615L19 30.076l1.762 1.38a7.573 7.573 0 0 0 4.691 1.615 7.618 7.618 0 0 0 7.618-7.618 7.573 7.573 0 0 0-1.615-4.691L30.076 19l1.38-1.762a7.573 7.573 0 0 0 1.615-4.691 7.618 7.618 0 0 0-7.618-7.618 7.573 7.573 0 0 0-4.691 1.615L19 7.924l-1.762-1.38a7.573 7.573 0 0 0-4.691-1.615 7.618 7.618 0 0 0-7.618 7.618 7.57 7.57 0 0 0 1.615 4.691L7.924 19Z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+            </span>
+            <span>Runs On.</span>
+          </span>
+        </h1>
+        <div class="nav-row">
+          <span>Buena</span>
+          <button id="themeToggle" class="nav-link" type="button">Light</button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <div class="grid-frame" aria-hidden="true"></div>
+        <div class="app-shell">
+          <aside class="side-rail">
         <div class="brand-block">
           <span class="brand-mark">B</span>
           <div>
@@ -68,10 +87,10 @@
             <div><span>Intake</span><strong id="intakeCount">0</strong></div>
           </div>
         </section>
-      </aside>
+          </aside>
 
-      <section class="main-stage">
-        <header class="hero-panel">
+          <section class="main-stage">
+            <header class="hero-panel">
           <div class="hero-copy">
             <p class="eyebrow">WEG Immanuelkirchstrasse 26</p>
             <h2>One living context for the property.</h2>
@@ -82,9 +101,9 @@
             <span id="latestPatch">latest patch: none</span>
           </div>
           <section class="metrics-grid compact-metrics" id="metricsGrid"></section>
-        </header>
+            </header>
 
-        <section class="intake-grid">
+            <section class="intake-grid">
           <details class="feature-card intake-card">
             <summary class="intake-summary">
               <div>
@@ -126,9 +145,9 @@
               <div id="resourceList" class="resource-list"></div>
             </div>
           </details>
-        </section>
+            </section>
 
-        <section class="work-grid">
+            <section class="work-grid">
           <section class="answer-panel">
             <div class="panel-head">
               <div>
@@ -161,9 +180,9 @@
             <pre id="runLog">Ready.</pre>
             <div id="patchList" class="patch-list"></div>
           </section>
-        </section>
+            </section>
 
-        <section class="context-panel">
+            <section class="context-panel">
           <div class="panel-head context-head">
             <div>
               <p class="eyebrow">Artifact</p>
@@ -189,9 +208,26 @@
             hidden
             aria-label="Editable context.md artifact"
           ></textarea>
-        </section>
-      </section>
-    </main>
+            </section>
+          </section>
+        </div>
+      </main>
+
+      <footer class="fixed-footer">
+        <div class="footer-col">
+          <span>Berlin - Germany</span>
+          <span>Context Engine</span>
+        </div>
+        <div class="footer-col footer-center">
+          <span>Agentic AI</span>
+          <span>2026</span>
+        </div>
+        <div class="footer-col footer-end">
+          <span>Protected User Context</span>
+          <span>Schema Driven</span>
+        </div>
+      </footer>
+    </div>
     <script src="/static/app.js"></script>
   </body>
 </html>
