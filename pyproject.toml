@@ -1,0 +1,24 @@
+[project]
+name = "berlinhackbuena-context-engine"
+version = "0.1.0"
+description = "LangGraph-powered context compiler for Buena property management hackathon data."
+requires-python = ">=3.11"
+dependencies = [
+  "langgraph>=0.2.0",
+  "langchain-google-genai>=2.0.0",
+  "pypdf>=5.0.0",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+context-engine = "context_engine.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

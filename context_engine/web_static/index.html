@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Buena Context Engine</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Buena</p>
+          <h1>Context Engine</h1>
+        </div>
+        <div class="status-strip">
+          <span id="watermark">watermark: loading</span>
+          <span id="langgraph">LangGraph</span>
+          <span id="patchCount">patches: 0</span>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="tutorial-panel" aria-label="Starter tutorial">
+          <div class="panel-head">
+            <p class="eyebrow">Start here</p>
+            <h2>From scattered files to one building memory</h2>
+          </div>
+          <ol class="tutorial-list">
+            <li>
+              <strong>Bootstrap</strong>
+              <span>Compile the historical bank, email, invoice, letter, and master data into one property context file.</span>
+            </li>
+            <li>
+              <strong>Patch</strong>
+              <span>Apply a daily delta and watch the engine update only the affected markdown sections.</span>
+            </li>
+            <li>
+              <strong>Ask</strong>
+              <span>Query the generated context instead of crawling raw files every time.</span>
+            </li>
+            <li>
+              <strong>Trace</strong>
+              <span>Use source IDs, patch logs, and metrics to see where each claim came from.</span>
+            </li>
+          </ol>
+          <div class="concept-box">
+            <span class="concept-label">Core idea</span>
+            <p>RAG searches raw documents at question time. This engine compiles durable context first, then keeps it current with surgical patches.</p>
+          </div>
+        </aside>
+
+        <section class="control-panel" aria-label="Engine controls">
+          <div class="panel-head row">
+            <div>
+              <p class="eyebrow">Workflow</p>
+              <h2>Run the engine</h2>
+            </div>
+            <label class="switch">
+              <input id="useAi" type="checkbox" checked />
+              <span>AI synthesis</span>
+            </label>
+          </div>
+
+          <div class="command-grid">
+            <button id="bootstrapBtn" class="primary">Bootstrap</button>
+            <div class="delta-row">
+              <select id="daySelect" aria-label="Delta day">
+                <option value="day-01">day-01</option>
+                <option value="day-02">day-02</option>
+                <option value="day-03">day-03</option>
+                <option value="day-04">day-04</option>
+                <option value="day-05">day-05</option>
+                <option value="day-06">day-06</option>
+                <option value="day-07">day-07</option>
+                <option value="day-08">day-08</option>
+                <option value="day-09">day-09</option>
+                <option value="day-10">day-10</option>
+              </select>
+              <button id="deltaBtn">Apply Delta</button>
+            </div>
+            <button id="replayBtn">Replay All</button>
+            <button id="refreshBtn">Refresh</button>
+          </div>
+
+          <div class="metrics-grid" id="metricsGrid"></div>
+
+          <form id="askForm" class="ask-box">
+            <input id="questionInput" type="text" value="What unresolved financial anomalies exist?" />
+            <button type="submit">Ask</button>
+          </form>
+          <div class="prompt-bank" aria-label="Example questions">
+            <button type="button" data-question="What unresolved financial anomalies exist?">Financial risks</button>
+            <button type="button" data-question="Who owns WE 01?">Owner lookup</button>
+            <button type="button" data-question="Who are the main service providers?">Providers</button>
+            <button type="button" data-question="What open operational topics are active?">Open topics</button>
+            <button type="button" data-question="Which invoices were added after the January deltas?">Recent invoices</button>
+            <button type="button" data-question="What should a property manager review first today?">Today focus</button>
+          </div>
+          <pre id="answerBox" class="answer-box">Ask a question after bootstrap or replay.</pre>
+
+          <div class="run-log">
+            <div class="panel-head compact">
+              <p class="eyebrow">Run log</p>
+              <h2>Latest activity</h2>
+            </div>
+            <pre id="runLog">Ready.</pre>
+          </div>
+        </section>
+
+        <section class="context-panel" aria-label="Context preview">
+          <div class="panel-head row">
+            <div>
+              <p class="eyebrow">Artifact</p>
+              <h2>context.md</h2>
+            </div>
+            <button id="loadContextBtn">Load Context</button>
+          </div>
+          <pre id="contextPreview">The compiled markdown will appear here.</pre>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

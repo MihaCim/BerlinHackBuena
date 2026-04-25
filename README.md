@@ -1,4 +1,4 @@
-# BerlinHackBuena
+`# BerlinHackBuena
 
 Context management project for a Berlin hackathon.
 
@@ -40,15 +40,91 @@ The goal is to build a system that can ingest these sources, extract relevant fa
 
 ## Getting Started
 
-There is no application scaffold yet. A suggested next step is to choose the implementation stack and add the first runnable service.
+The repository now includes a runnable LangGraph-powered Python context engine.
 
-Possible first milestones:
+Install dependencies:
 
-1. Add a document ingestion script.
-2. Extract metadata from invoices and emails.
-3. Store extracted records in a local database.
-4. Add search over the extracted content.
-5. Build a small UI or API for querying the context store.
+```bash
+python -m pip install -r requirements.txt
+```
+
+Create a local `.env` file in the repo root and paste your Academic Cloud key:
+
+```env
+AI_PROVIDER=academiccloud
+ACADEMIC_CLOUD_API_KEY=your_academic_cloud_key_here
+ACADEMIC_CLOUD_BASE_URL=https://chat-ai.academiccloud.de/v1
+ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct
+```
+
+The CLI auto-loads `.env` from the working directory, so you do not need to export it manually every time.
+
+Run tests:
+
+```bash
+python -m pytest -q
+```
+
+Compile the base context:
+
+```bash
+python -m context_engine bootstrap --source data --output outputs
+```
+
+Apply a single incremental day:
+
+```bash
+python -m context_engine apply-delta --source data --output outputs --delta data/incremental/day-01
+```
+
+Replay all incremental days:
+
+```bash
+python -m context_engine replay-deltas --source data --output outputs
+```
+
+Ask from the compiled markdown context:
+
+```bash
+python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What unresolved financial anomalies exist?"
+```
+
+Ask with AI synthesis enabled:
+
+```bash
+python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What should a property manager review first today?" --use-ai
+```
+
+Show current output status:
+
+```bash
+python -m context_engine status --output outputs
+```
+
+AI synthesis is optional. Set `ACADEMIC_CLOUD_API_KEY` and pass `--use-ai` to enable Academic Cloud for advisory notes and natural-language answers.
+The tested default model is `llama-3.3-70b-instruct`; you can override it with `ACADEMIC_CLOUD_MODEL` in `.env`.
+
+Start the web dashboard:
+
+```bash
+python -m context_engine serve --host 127.0.0.1 --port 8765
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+Manual test flow:
+
+```bash
+python -m context_engine bootstrap --source data --output outputs --use-ai
+python -m context_engine apply-delta --source data --output outputs --delta data/incremental/day-01 --use-ai
+python -m context_engine replay-deltas --source data --output outputs --use-ai
+python -m context_engine status --output outputs
+python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What unresolved financial anomalies exist?"
+```
 
 ## Data Notes
 
