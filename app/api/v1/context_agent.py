@@ -16,9 +16,11 @@ def get_context_agent_service(
     return ContextAgentService(
         workspace_root=settings.repo_root,
         model=settings.context_agent_model,
-        gemini_api_key=settings.gemini_api_key.get_secret_value()
-        if settings.gemini_api_key
-        else None,
+        tub_api_key=settings.tub_api_key.get_secret_value() if settings.tub_api_key else None,
+        tub_api_base=settings.tub_api_base,
+        tub_chat_endpoint=settings.tub_chat_endpoint,
+        tub_custom_instructions=settings.tub_custom_instructions,
+        tub_hide_custom_instructions=settings.tub_hide_custom_instructions,
     )
 
 

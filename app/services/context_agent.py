@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -8,21 +7,35 @@ import anyio
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import FilesystemBackend
 
+from app.services.university_chat_model import UniversityChatModel
+
 
 class ContextAgentService:
-    def __init__(self, workspace_root: Path, model: str, gemini_api_key: str | None) -> None:
+    def __init__(
+        self,
+        workspace_root: Path,
+        model: str,
+        tub_api_key: str | None,
+        tub_api_base: str,
+        tub_chat_endpoint: str,
+        tub_custom_instructions: str,
+        tub_hide_custom_instructions: bool,
+    ) -> None:
         self.workspace_root = workspace_root
         self.model = model
-        self.gemini_api_key = gemini_api_key
+        self.tub_api_key = tub_api_key
+        self.tub_api_base = tub_api_base
+        self.tub_chat_endpoint = tub_chat_endpoint
+        self.tub_custom_instructions = tub_custom_instructions
+        self.tub_hide_custom_instructions = tub_hide_custom_instructions
         self.prompt_path = workspace_root / "schema" / "DEEP_AGENT.md"
 
     async def status(self) -> dict[str, object]:
         return {
             "model": self.model,
+            "provider": "tub-chatbot",
             "prompt_path": str(self.prompt_path),
-            "gemini_configured": bool(
-                self.gemini_api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            ),
+            "tub_configured": bool(self.tub_api_key),
             "subagents_enabled": False,
             "read_roots": ["/schema/**", "/normalize/**", "/output/**", "/template_index.md"],
             "write_roots": ["/output/**"],
@@ -32,7 +45,6 @@ class ContextAgentService:
         return await anyio.to_thread.run_sync(self._build_base_context_sync)
 
     def _build_base_context_sync(self) -> dict[str, object]:
-        self._configure_gemini_env()
         agent = self._create_agent()
         result = agent.invoke(
             {
@@ -54,7 +66,7 @@ class ContextAgentService:
 
     def _create_agent(self) -> Any:
         return create_deep_agent(
-            model=self.model,
+            model=self._create_model(),
             system_prompt=self.prompt_path.read_text(encoding="utf-8"),
             backend=FilesystemBackend(root_dir=self.workspace_root, virtual_mode=True),
             permissions=filesystem_permissions(),
@@ -62,12 +74,17 @@ class ContextAgentService:
             name="buena-context-agent",
         )
 
-    def _configure_gemini_env(self) -> None:
-        if os.getenv("GOOGLE_API_KEY"):
-            return
-        gemini_key = self.gemini_api_key or os.getenv("GEMINI_API_KEY")
-        if gemini_key:
-            os.environ["GOOGLE_API_KEY"] = gemini_key
+    def _create_model(self) -> UniversityChatModel:
+        if not self.tub_api_key:
+            raise ValueError("TUB_API_KEY is missing.")
+        return UniversityChatModel(
+            api_key=self.tub_api_key,
+            api_base=self.tub_api_base,
+            endpoint=self.tub_chat_endpoint,
+            model_name=self.model,
+            custom_instructions=self.tub_custom_instructions,
+            hide_custom_instructions=self.tub_hide_custom_instructions,
+        )
 
 
 def filesystem_permissions() -> list[FilesystemPermission]:

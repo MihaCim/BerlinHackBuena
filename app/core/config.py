@@ -28,8 +28,12 @@ class Settings(BaseSettings):
     normalize_dir: Path = Field(default=REPO_ROOT / "normalize")
     output_dir: Path = Field(default=REPO_ROOT / "output")
     ingestion_db_path: Path = Field(default=REPO_ROOT / ".local" / "ingestion.sqlite3")
-    context_agent_model: str = "google_genai:gemini-3-pro-preview"
-    gemini_api_key: SecretStr | None = None
+    context_agent_model: str = "gpt-5.4-mini"
+    tub_api_key: SecretStr | None = None
+    tub_api_base: str = "https://ki-toolbox.tu-braunschweig.de"
+    tub_chat_endpoint: str = "/api/v1/chat/send"
+    tub_custom_instructions: str = ""
+    tub_hide_custom_instructions: bool = True
 
 
 @lru_cache(maxsize=1)
