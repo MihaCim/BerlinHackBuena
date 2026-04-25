@@ -11,7 +11,7 @@ For each row:
 - parse `betrag` as positive decimal; preserve direction from `typ`
 - `referenz_id` → strong link to invoice or entity
 - extract invoice numbers, names, IBAN tokens from `verwendungszweck`
-- `gegen_name` is not automatically owner/tenant/vendor without `referenz_id`, IBAN match, or stammdaten support
+- `gegen_name` is not automatically owner/tenant/service_provider without `referenz_id`, IBAN match, or master_data support
 
 Return:
 

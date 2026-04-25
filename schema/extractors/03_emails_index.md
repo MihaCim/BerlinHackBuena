@@ -10,7 +10,7 @@ For each row:
 - preserve `EMAIL-*` as `source_id`
 - expected source path: `emails/{month_dir}/{filename}`
 - normalized path: `normalize/eml/{month_dir}/{source_id}.md`
-- match `from_email` / `to_email` against stammdaten registry → candidate entity IDs
+- match `from_email` / `to_email` against master_data registry → candidate entity IDs
 - pre-classify subject only (greetings, newsletters, autoreplies → `noise` or `reference_only`)
 - flag rows with `error_types`
 

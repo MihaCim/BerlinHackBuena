@@ -9,11 +9,11 @@ Living-context wiki for German WEG property management. Pure Karpathy `llm-wiki`
 ## 1. Property = Liegenschaft
 
 In German WEG law, the Liegenschaft (legal entity / WEG) is the unit of management:
-- ONE Verwalter contract per Liegenschaft
+- ONE property-manager contract per Liegenschaft
 - ONE ETV (Eigentümerversammlung), ONE Wirtschaftsplan, ONE BKA
 - ONE WEG-Konto + Rücklage at Liegenschaft level
-- Eigentümer can own units across MULTIPLE Gebäude in the same Liegenschaft
-- Dienstleister contracted by the WEG, serve all Gebäude
+- Owners can own units across MULTIPLE buildings in the same Liegenschaft
+- Service providers contracted by the WEG can serve multiple buildings
 
 Therefore Buena's "property" = Liegenschaft. Buildings are subordinate. Layout reflects this.
 
@@ -54,12 +54,12 @@ wiki/
     │   └── HAUS-14/…
     │
     ├── 03_people/
-    │   ├── eigentuemer/
+    │   ├── owners/
     │   │   └── EIG-014.md            # owner can span buildings
-    │   └── mieter/
+    │   └── tenants/
     │       └── MIE-014.md
     │
-    ├── 04_dienstleister/
+    ├── 04_service_providers/
     │   └── DL-007.md
     │
     ├── 05_finances/
@@ -78,7 +78,7 @@ wiki/
 
 Numbered prefixes (`01_..07_`) force natural reading order in file explorers and align with importance ranking.
 
-Multi-tenant production tier prepends customer prefix: `wiki/<verwalter>/LIE-001/...`. Same recursive pattern.
+Multi-tenant production tier prepends customer/property-manager prefix: `wiki/<property_manager>/LIE-001/...`. Same recursive pattern.
 
 ---
 
@@ -96,7 +96,7 @@ State + identity + hierarchy live in the **`_state.json` sidecar** and inside bo
 ```yaml
 ---
 name: lie-001-immanuelkirchstr-26
-description: Living context for WEG Immanuelkirchstraße 26, 10405 Berlin (Liegenschaft LIE-001). 3 buildings (HAUS-12 Vorderhaus, HAUS-13 Seitenflügel, HAUS-14 Hinterhaus), 52 units, 35 owners, 26 tenants, 16 service providers. Verwalter Huber & Partner. First stop for ANY question about this property — buildings, units, owners, tenants, service providers, finances, ETV, BKA, Hausgeld, Rücklage, contractor relationships. Routes to detail via @imports.
+description: Living context for WEG Immanuelkirchstraße 26, 10405 Berlin (Liegenschaft LIE-001). 3 buildings (HAUS-12 Vorderhaus, HAUS-13 Seitenflügel, HAUS-14 Hinterhaus), 52 units, 35 owners, 26 tenants, 16 service providers. Property manager Huber & Partner. First stop for ANY question about this property — buildings, units, owners, tenants, service providers, finances, ETV, BKA, Hausgeld, Rücklage, contractor relationships. Routes to detail via @imports.
 ---
 ```
 
@@ -123,7 +123,7 @@ description: Apartment EH-014 in HAUS-12 (Vorderhaus), 2. OG links, 67.4 m², 2.
 ```yaml
 ---
 name: eig-014-maria-weber
-description: Eigentümerin Maria Weber, owns EH-014 (HAUS-12) and EH-027 (HAUS-13) — two units across two buildings. Beirat member, holds SEV-Mandat. Email m.weber@example.de. Pays Hausgeld punctually. Conservative voter in ETV. Use for owner-specific queries; cross-references both HAUS-12 and HAUS-13 because of multi-building ownership.
+description: Owner Maria Weber owns EH-014 (HAUS-12) and EH-027 (HAUS-13) — two units across two buildings. Beirat member, holds SEV-Mandat. Email m.weber@example.de. Pays Hausgeld punctually. Conservative voter in ETV. Use for owner-specific queries; cross-references both HAUS-12 and HAUS-13 because of multi-building ownership.
 ---
 ```
 
@@ -152,7 +152,7 @@ description: <as above>
 
 # WEG Immanuelkirchstraße 26 — Living Context
 
-> 1 Verwalter, 3 Häuser, 52 Einheiten, 35 Eigentümer, 26 Mieter, 16 Dienstleister. WEG-Konto Postbank, Rücklage BayernLB.
+> 1 property manager, 3 buildings, 52 units, 35 owners, 26 tenants, 16 service providers. WEG account Postbank, reserve account BayernLB.
 
 **See also:** @01_management/etv_protokolle.md · @05_finances/overview.md · @06_skills.md
 
@@ -168,7 +168,7 @@ description: <as above>
 
 - WEG-Konto: DE02 1001 0010 0123 4567 89 (Postbank)
 - Rücklage: DE12 1203 0000 0098 7654 32 (BayernLB)
-- Verwalter: DE89 3704 0044 0532 0130 00 (Commerzbank)
+- Property manager account: DE89 3704 0044 0532 0130 00 (Commerzbank)
 
 ## Open Issues
 
@@ -221,7 +221,7 @@ Patcher rule: bullet matching `- {emoji} **{ID}:** ...` = agent-managed. Upsert 
 ### Keyed table rows
 
 ```markdown
-| ID | Mieter | Status |
+| ID | Tenant | Status |
 |---|---|---|
 | EH-014 | MIE-014 | 🔴 Heizung |
 | EH-015 | MIE-015 | ✓ |
@@ -274,7 +274,7 @@ Per-property metadata, derived, machine-managed.
 ```json
 {
   "id": "LIE-001",
-  "type": "liegenschaft",
+  "type": "property",
   "schema_version": 1,
   "last_patched": "2026-04-25T14:32:11Z",
   "patcher_commit": "a3f2c19",
@@ -400,7 +400,7 @@ Same table powers BM25 search for read-side queries via FTS5.
 
 ```markdown
 [[02_buildings/HAUS-12/index]]
-[[03_people/mieter/MIE-014]]
+[[03_people/tenants/MIE-014]]
 [[../HAUS-13/units/EH-027]]
 ```
 
@@ -432,13 +432,13 @@ unit_id = EH-014 (in HAUS-12)
 → wiki/LIE-001/02_buildings/HAUS-12/units/EH-014.md
 
 owner_id = EIG-014 (cross-building)
-→ wiki/LIE-001/03_people/eigentuemer/EIG-014.md
+→ wiki/LIE-001/03_people/owners/EIG-014.md
 
 tenant_id = MIE-014
-→ wiki/LIE-001/03_people/mieter/MIE-014.md
+→ wiki/LIE-001/03_people/tenants/MIE-014.md
 
-dienstleister_id = DL-007
-→ wiki/LIE-001/04_dienstleister/DL-007.md
+service_provider_id = DL-007
+→ wiki/LIE-001/04_service_providers/DL-007.md
 ```
 
 ---
@@ -450,7 +450,7 @@ dienstleister_id = DL-007
 - **Karpathy purity:** entity pages + concept pages + log + index + schema dir, with skills.md frontmatter on every file.
 - **Skills.md purity:** only `name` + `description` in frontmatter, ≤1024 chars description, third-person voice, progressive disclosure.
 - **WEG law fit:** Liegenschaft is the property; cross-building owners modeled correctly; bank/finances/ETV at LIE root.
-- **Multi-tenant ready:** prepend `wiki/<verwalter>/<lie>/...`. Same recursive pattern.
+- **Multi-tenant ready:** prepend `wiki/<property_manager>/<lie>/...`. Same recursive pattern.
 - **Token-cheap:** description = discovery layer, body = read on demand, anchor lookup via DuckDB index.
 - **Self-contained:** zip the LIE folder = portable backup.
 
@@ -602,7 +602,7 @@ Append-only record of architectural choices, with rejected alternatives. Provena
 
 **Rejected:** Building root (`wiki/<LIE>/<HAUS>/index.md` as deliverable, WEG-scoped facts duplicated per HAUS).
 
-**Why:** WEG law: ONE Verwalter / ETV / Wirtschaftsplan / BKA / Konto per Liegenschaft. Eigentümer can own units across multiple Gebäude in the same LIE. Building root would triplicate ETV/Hausgeld/Rücklage and break cross-building owner queries. Liegenschaft = canonical unit of management.
+**Why:** WEG law: ONE property manager / ETV / Wirtschaftsplan / BKA / account per Liegenschaft. Owners can own units across multiple buildings in the same LIE. Building root would triplicate ETV/Hausgeld/Rücklage and break cross-building owner queries. Liegenschaft = canonical unit of management.
 
 **Source of rejected idea:** `template_index.md` (root file path `wiki/<LIE>/<HAUS>/index.md`).
 

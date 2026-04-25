@@ -1,21 +1,21 @@
 # 06 — Invoice PDF Extractor
 
-Input: extracted text + metadata for one invoice. Optional: row from `rechnungen_index.csv`, vendor record from stammdaten.
+Input: extracted text + metadata for one invoice. Optional: row from `rechnungen_index.csv`, service-provider record from master_data.
 
-Goal: produce a PatchPlan fragment for the invoice page, vendor page, and any HAUS/unit timeline. Emit financial facts. Do NOT emit context-changing ops for routine recurring billing.
+Goal: produce a PatchPlan fragment for the invoice page, service-provider page, and any HAUS/unit timeline. Emit financial facts. Do NOT emit context-changing ops for routine recurring billing.
 
 ## Extract
 
-invoice_number, invoice_date, vendor (id, name, address, IBAN), recipient, line_items, net/vat/gross, due_date, service_period, work_category, property/building/unit references, issue references.
+invoice_number, invoice_date, service_provider (id, name, address, IBAN), recipient, line_items, net/vat/gross, due_date, service_period, work_category, property/building/unit references, issue references.
 
 ## Validate
 
-Against index row: invoice_number, date, vendor, IBAN, gross. Mismatches → `review_item`.
+Against index row: invoice_number, date, service_provider, IBAN, gross. Mismatches → `review_item`.
 
 ## Op Rules
 
 - invoice page: `upsert_row` on `wiki/LIE-XXX/05_finances/invoices/<YYYY-MM>/INV-XXXXX.md` sections `Invoice` and `Line Items` (one row per line item, key = line index)
-- vendor page: `upsert_row` on `DL-XXX.md` `Recent Invoices`, key = `INV-XXXXX`
+- service-provider page: `upsert_row` on `DL-XXX.md` `Recent Invoices`, key = `INV-XXXXX`
 - if invoice references a HAUS or unit → `prepend_row` on `HAUS/index.md` `Recent Events` (signal_class = `financial_update`)
 - if work changes durable building state (installation, replacement, completed repair, inspection result) → emit a `fact` flagged for `physical.md` and a `review_item` (do NOT auto-patch physical.md)
 - footnote upserts on every patched file
@@ -36,9 +36,9 @@ Against index row: invoice_number, date, vendor, IBAN, gross. Mismatches → `re
   },
   "invoice": {
     "invoice_number": "",
-    "vendor_id": null,
-    "vendor_name": "",
-    "vendor_iban": null,
+    "service_provider_id": null,
+    "service_provider_name": "",
+    "service_provider_iban": null,
     "recipient": "",
     "service_period": null,
     "due_date": null,

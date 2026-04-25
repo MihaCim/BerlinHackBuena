@@ -1,6 +1,6 @@
-# 02 — Stammdaten Loader
+# 02 — Master Data Loader
 
-Input: master-data files from `data/stammdaten/` — `eigentuemer.csv`, `mieter.csv`, `einheiten.csv`, `dienstleister.csv`, `stammdaten.json`.
+Input: raw master-data files from `data/stammdaten/` — `eigentuemer.csv`, `mieter.csv`, `einheiten.csv`, `dienstleister.csv`, `stammdaten.json`.
 
 Goal: produce a flat entity registry used by all later extractors for resolution. No wiki ops.
 
@@ -10,12 +10,12 @@ Return:
 
 ```json
 {
-  "extractor": "stammdaten",
+  "extractor": "master_data",
   "source": { "source_path": "" },
   "entities": [
     {
       "entity_id": "",
-      "entity_type": "liegenschaft|gebaeude|einheit|eigentuemer|mieter|dienstleister",
+      "entity_type": "property|building|unit|owner|tenant|service_provider",
       "name": "",
       "aliases": [],
       "identifiers": {

@@ -1,6 +1,6 @@
 # 10 — Daily Coordinator
 
-Input: JSON outputs from manifest, stammdaten, all index extractors, and all per-file extractors for one `day-NN` package.
+Input: JSON outputs from manifest, master_data, all index extractors, and all per-file extractors for one `day-NN` package.
 
 Goal: produce ONE `PatchPlan` for the Patcher, plus a review queue. You do not re-extract source text. You only merge, deduplicate, link, and validate.
 
@@ -8,9 +8,9 @@ Goal: produce ONE `PatchPlan` for the Patcher, plus a review queue. You do not r
 
 1. Validate package counts (manifest expected vs observed).
 2. Deduplicate source records by `source_id`.
-3. Link invoices to bank transactions via `reference_id`, `invoice_number`, or amount+date+vendor match.
-4. Link emails/letters to issues, invoices, owners, tenants, vendors, properties.
-5. Resolve every op's target entities through the stammdaten registry. Unresolved → drop op, raise `review_item`.
+3. Link invoices to bank transactions via `reference_id`, `invoice_number`, or amount+date+service-provider match.
+4. Link emails/letters to issues, invoices, owners, tenants, service providers, properties.
+5. Resolve every op's target entities through the master_data registry. Unresolved → drop op, raise `review_item`.
 6. Conflict scan: for each `upsert_bullet` / `upsert_row`, look up the existing keyed line via `query_wiki(entity_id)` over the `wiki_chunks` DuckDB index. Contradicting fact → drop op, append to `_pending_review.md` (output as `review_item`).
 7. Compose ring-buffer ops: `prepend_row` on `Recent Events` and `prune_ring(max=50)`.
 8. Compose footnote ops: every new source ID gets `upsert_footnote` on every file it appears in. Emit `gc_footnotes` if any source becomes unreferenced after deletes.
