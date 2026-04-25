@@ -5,9 +5,10 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
-from app.core.config import get_settings
+from app.core.config import REPO_ROOT, get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 
@@ -34,6 +35,9 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestIdMiddleware)
     app.include_router(api_router, prefix="/api/v1")
+    static_dir = REPO_ROOT / "app" / "static"
+    if static_dir.is_dir():
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
     return app
 
 

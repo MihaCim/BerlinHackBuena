@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.config import Settings, get_settings
 from app.schemas.webhook import IngestEvent, IngestResponse
+from app.services.events import EventBroker, IngestPulse, get_event_broker
 from app.services.supervisor import Supervisor, get_supervisor
 from app.storage.idempotency import open_idempotency
 
@@ -22,6 +23,7 @@ async def ingest_webhook(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     supervisor: Annotated[Supervisor, Depends(get_supervisor)],
+    broker: Annotated[EventBroker, Depends(get_event_broker)],
 ) -> IngestResponse:
     raw_body = await request.body()
     _verify_hmac(raw_body, request=request, settings=settings)
@@ -48,7 +50,7 @@ async def ingest_webhook(
 
     store.mark_done(event.event_id)
     patch = result.patch
-    return IngestResponse(
+    response = IngestResponse(
         event_id=event.event_id,
         status=result.status,
         applied_ops=patch.applied_ops if patch is not None else 0,
@@ -56,6 +58,18 @@ async def ingest_webhook(
         commit_sha=patch.commit_sha if patch is not None else None,
         idempotent=patch.idempotent if patch is not None else False,
     )
+    await broker.publish(
+        IngestPulse(
+            event_id=event.event_id,
+            property_id=event.property_id,
+            event_type=event.event_type,
+            status=result.status,
+            applied_ops=response.applied_ops,
+            deferred_ops=response.deferred_ops,
+            commit_sha=response.commit_sha,
+        )
+    )
+    return response
 
 
 def _verify_hmac(raw_body: bytes, *, request: Request, settings: Settings) -> None:

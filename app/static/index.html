@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Buena Context — Live</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         margin: 0; padding: 24px; background: #0d1117; color: #e6edf3; }
+  h1 { font-size: 16px; margin: 0 0 16px; color: #7d8590; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+  #pulses { display: flex; flex-direction: column; gap: 6px; max-width: 960px; }
+  .pulse { display: grid; grid-template-columns: 130px 110px 100px 1fr 110px;
+           gap: 12px; padding: 8px 12px; background: #161b22; border: 1px solid #30363d;
+           border-radius: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+  .pulse .id { color: #58a6ff; }
+  .pulse .type { color: #f0883e; }
+  .pulse .status.applied { color: #56d364; }
+  .pulse .status.no_signal { color: #7d8590; }
+  .pulse .status.deferred, .pulse .status.error { color: #f85149; }
+  .pulse .ops { color: #d2a8ff; }
+  .pulse .commit { color: #7d8590; }
+  .controls { margin-bottom: 16px; }
+  input { background: #0d1117; color: #e6edf3; border: 1px solid #30363d; padding: 6px 10px; border-radius: 4px; font-family: inherit; }
+</style>
+</head>
+<body>
+<h1>Buena Context — Live Pulses</h1>
+<div class="controls">
+  <label>property_id filter: <input id="propFilter" placeholder="LIE-001" /></label>
+  <button id="reconnect">connect</button>
+</div>
+<div id="pulses"></div>
+<script>
+let es = null;
+function connect() {
+  if (es) es.close();
+  const filter = document.getElementById("propFilter").value.trim();
+  const url = "/api/v1/events" + (filter ? "?property_id=" + encodeURIComponent(filter) : "");
+  es = new EventSource(url);
+  es.addEventListener("ingest", (msg) => {
+    const p = JSON.parse(msg.data);
+    const row = document.createElement("div");
+    row.className = "pulse";
+    row.innerHTML =
+      '<span class="id">' + p.event_id + '</span>' +
+      '<span class="type">' + p.event_type + '</span>' +
+      '<span class="status ' + p.status + '">' + p.status + '</span>' +
+      '<span class="ops">applied:' + p.applied_ops + ' deferred:' + p.deferred_ops + '</span>' +
+      '<span class="commit">' + (p.commit_sha ? p.commit_sha.slice(0, 7) : "-") + '</span>';
+    const list = document.getElementById("pulses");
+    list.insertBefore(row, list.firstChild);
+    while (list.childElementCount > 200) list.removeChild(list.lastChild);
+  });
+}
+document.getElementById("reconnect").addEventListener("click", connect);
+connect();
+</script>
+</body>
+</html>
