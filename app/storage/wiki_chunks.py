@@ -55,6 +55,12 @@ class WikiChunksStore:
             [property_id, file, section, body, entity_refs],
         )
 
+    def delete_file(self, property_id: str, file: str) -> None:
+        self._conn.execute(
+            "DELETE FROM wiki_chunks WHERE property_id = ? AND file = ?",
+            [property_id, file],
+        )
+
     def find_by_entity(self, property_id: str, entity_id: str) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """

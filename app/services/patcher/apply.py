@@ -24,6 +24,7 @@ from app.services.patcher.validate import (
     parse_vocabulary,
     validate_keyed_values,
 )
+from app.services.reindex import reindex_files
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ def apply_patch_plan(
     *,
     wiki_dir: Path,
     vocabulary_path: Path,
+    wiki_chunks_db_path: Path | None = None,
 ) -> PatchApplyResult:
     event_id = str(plan["event_id"])
     property_id = str(plan["property_id"])
@@ -73,6 +75,14 @@ def apply_patch_plan(
         wiki_dir,
         message=f"ingest({event_id}): {str(plan.get('summary', 'patch')).strip()}",
     )
+    if wiki_chunks_db_path is not None:
+        _reindex_touched_files(
+            wiki_dir=wiki_dir,
+            property_id=property_id,
+            property_root=property_root,
+            touched=touched,
+            db_path=wiki_chunks_db_path,
+        )
     return PatchApplyResult(
         event_id=event_id,
         applied_ops=len(valid_ops),
@@ -215,3 +225,23 @@ def _head_sha(wiki_dir: Path) -> str | None:
     if result.returncode != 0:
         return None
     return result.stdout.strip()
+
+
+def _reindex_touched_files(
+    *,
+    wiki_dir: Path,
+    property_id: str,
+    property_root: Path,
+    touched: set[Path],
+    db_path: Path,
+) -> None:
+    files = []
+    for path in touched:
+        if path.suffix != ".md":
+            continue
+        try:
+            files.append(path.relative_to(property_root))
+        except ValueError:
+            continue
+    if files:
+        reindex_files(wiki_dir=wiki_dir, property_id=property_id, files=files, db_path=db_path)
