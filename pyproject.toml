@@ -1,0 +1,11 @@
+[project]
+name = "berlinhackbuena"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "pypdf>=5.0.0",
+    "uvicorn[standard]>=0.34.0",
+]

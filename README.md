@@ -40,7 +40,7 @@ The goal is to build a system that can ingest these sources, extract relevant fa
 
 ## Getting Started
 
-There is no application scaffold yet. A suggested next step is to choose the implementation stack and add the first runnable service.
+The repository now includes a FastAPI ingestion service that scans `data/`, ignores `data/DATA_SUMMARY.md`, and checkpoints batch/source ingestion in local SQLite.
 
 Possible first milestones:
 
@@ -59,11 +59,13 @@ The `hackathon/` directory appears to contain hackathon data and should be treat
 Add stack-specific setup instructions here once the project has a runtime, for example:
 
 ```bash
-# install dependencies
+uv sync
 
-# run tests
+uv run uvicorn app.main:app --reload
 
-# start the app
+curl -X POST 'http://127.0.0.1:8000/ingest/base'
+
+curl -X POST 'http://127.0.0.1:8000/ingest/incremental/day-01'
 ```
 
 ## License
