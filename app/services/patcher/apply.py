@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -19,12 +20,15 @@ from app.services.patcher.ops import (
     upsert_footnote,
     upsert_row,
 )
+from app.services.patcher.paths import property_file_path
 from app.services.patcher.validate import (
     append_pending_review,
     parse_vocabulary,
     validate_keyed_values,
 )
 from app.services.reindex import reindex_files
+
+_PROPERTY_ID_RE = re.compile(r"^LIE-\d{3}$")
 
 
 @dataclass(frozen=True)
@@ -45,6 +49,8 @@ def apply_patch_plan(
 ) -> PatchApplyResult:
     event_id = str(plan["event_id"])
     property_id = str(plan["property_id"])
+    if _PROPERTY_ID_RE.fullmatch(property_id) is None:
+        raise ValueError("invalid property_id")
     property_root = wiki_dir / property_id
     feedback_path = property_root / "_hermes_feedback.jsonl"
 
@@ -94,7 +100,7 @@ def apply_patch_plan(
 def _apply_one(property_root: Path, op: Mapping[str, Any]) -> set[Path]:
     op_name = str(op["op"])
     if op_name == "update_state":
-        path = property_root / str(op.get("file", "_state.json"))
+        path = property_file_path(property_root, str(op.get("file", "_state.json")))
         state = update_state(
             path,
             updates=_mapping_or_none(op.get("updates")),
@@ -103,7 +109,7 @@ def _apply_one(property_root: Path, op: Mapping[str, Any]) -> set[Path]:
         atomic_write_text(path, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
         return {path}
 
-    file_path = property_root / str(op["file"])
+    file_path = property_file_path(property_root, str(op["file"]))
     content = file_path.read_text(encoding="utf-8")
     section = str(op.get("section", ""))
 

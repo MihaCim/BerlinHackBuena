@@ -215,5 +215,3 @@ def _first_amount(line: str) -> Decimal | None:
         except InvalidOperation:
             continue
     return None
-
-

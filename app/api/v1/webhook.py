@@ -3,10 +3,12 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from pathlib import Path
 from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import ValidationError
 
 from app.core.config import Settings, get_settings
 from app.schemas.webhook import IngestEvent, IngestResponse
@@ -28,6 +30,7 @@ async def ingest_webhook(
     raw_body = await request.body()
     _verify_hmac(raw_body, request=request, settings=settings)
     event = _parse_event(raw_body)
+    event = _validate_source_path(event, settings=settings)
 
     store = open_idempotency(settings.output_dir / "idempotency.duckdb")
     if not store.claim(event.event_id):
@@ -97,4 +100,33 @@ def _parse_event(raw_body: bytes) -> IngestEvent:
         payload = json.loads(raw_body)
     except json.JSONDecodeError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid JSON body") from exc
-    return IngestEvent.model_validate(payload)
+    try:
+        return IngestEvent.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid ingest event") from exc
+
+
+def _validate_source_path(event: IngestEvent, *, settings: Settings) -> IngestEvent:
+    if event.source_path is None:
+        return event
+
+    resolved = _resolve_allowed_source_path(event.source_path, data_dir=settings.data_dir)
+    if resolved is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "source_path is outside data_dir"
+        )
+    return event.model_copy(update={"source_path": resolved})
+
+
+def _resolve_allowed_source_path(source_path: Path, *, data_dir: Path) -> Path | None:
+    data_root = data_dir.resolve(strict=False)
+    candidates = (
+        [source_path]
+        if source_path.is_absolute()
+        else [Path.cwd() / source_path, data_dir / source_path]
+    )
+    for candidate in candidates:
+        resolved = candidate.resolve(strict=False)
+        if resolved.is_relative_to(data_root):
+            return resolved
+    return None

@@ -80,6 +80,7 @@ def test_iter_archive_events_filters_by_window(tmp_path: Path) -> None:
 
 async def test_backfill_limit_caps_posts(tmp_path: Path, settings: Settings) -> None:
     root = _build_archive(tmp_path)
+    settings.data_dir = root
     settings.webhook_hmac_secret = "shh"
     spy = CapturingSupervisor()
     app.dependency_overrides[get_settings] = lambda: settings
@@ -101,6 +102,7 @@ async def test_backfill_limit_caps_posts(tmp_path: Path, settings: Settings) -> 
 
 async def test_backfill_chronological_order(tmp_path: Path, settings: Settings) -> None:
     root = _build_archive(tmp_path)
+    settings.data_dir = root
     settings.webhook_hmac_secret = "shh"
     spy = CapturingSupervisor()
     app.dependency_overrides[get_settings] = lambda: settings

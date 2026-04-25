@@ -66,6 +66,61 @@ async def test_webhook_rejects_bad_signature(client: AsyncClient, settings: Sett
     assert response.status_code == 401
 
 
+async def test_webhook_rejects_invalid_event_body(client: AsyncClient, settings: Settings) -> None:
+    secret = "secret"
+    settings.webhook_hmac_secret = secret
+    body = json.dumps(
+        {"event_type": "manual", "property_id": "LIE-001", "payload": {}},
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    response = await client.post(
+        "/api/v1/webhook/ingest", content=body, headers=_signed(body, secret)
+    )
+
+    assert response.status_code == 422
+
+
+async def test_webhook_rejects_bad_property_id(client: AsyncClient, settings: Settings) -> None:
+    secret = "secret"
+    settings.webhook_hmac_secret = secret
+    body = json.dumps(
+        {"event_id": "EVT-BAD", "event_type": "manual", "property_id": "../escape", "payload": {}},
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    response = await client.post(
+        "/api/v1/webhook/ingest", content=body, headers=_signed(body, secret)
+    )
+
+    assert response.status_code == 422
+
+
+async def test_webhook_rejects_source_path_outside_data_dir(
+    client: AsyncClient,
+    settings: Settings,
+) -> None:
+    secret = "secret"
+    settings.webhook_hmac_secret = secret
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    body = json.dumps(
+        {
+            "event_id": "EVT-SOURCE",
+            "event_type": "manual",
+            "property_id": "LIE-001",
+            "source_path": "/etc/passwd",
+            "payload": {},
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    response = await client.post(
+        "/api/v1/webhook/ingest", content=body, headers=_signed(body, secret)
+    )
+
+    assert response.status_code == 422
+
+
 async def test_webhook_replay_is_idempotent(client: AsyncClient, settings: Settings) -> None:
     secret = "secret"
     settings.webhook_hmac_secret = secret

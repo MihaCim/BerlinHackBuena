@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from app.services.patcher.apply import apply_patch_plan
 from app.tools.bootstrap_wiki import bootstrap
 
@@ -64,3 +66,42 @@ def test_apply_patch_plan_applies_ops_commits_and_is_idempotent(tmp_path: Path) 
         text=True,
     ).stdout
     assert "ingest(EVT-001): tenant leak report" in log
+
+
+def test_apply_patch_plan_rejects_escaping_file_path(tmp_path: Path) -> None:
+    wiki_dir = tmp_path / "wiki"
+    bootstrap(STAMMDATEN, wiki_dir)
+    plan = {
+        "event_id": "EVT-ESCAPE",
+        "property_id": "LIE-001",
+        "summary": "escape",
+        "ops": [
+            {
+                "op": "upsert_bullet",
+                "file": "../outside.md",
+                "section": "Open Issues",
+                "key": "EH-001",
+                "text": "🔴 **EH-001:** bad [^evt]",
+                "status": "in_progress",
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match="inside the property"):
+        apply_patch_plan(plan, wiki_dir=wiki_dir, vocabulary_path=VOCABULARY)
+
+    assert not (wiki_dir / "outside.md").exists()
+
+
+def test_apply_patch_plan_rejects_bad_property_id(tmp_path: Path) -> None:
+    wiki_dir = tmp_path / "wiki"
+    bootstrap(STAMMDATEN, wiki_dir)
+    plan = {
+        "event_id": "EVT-PROP",
+        "property_id": "../escape",
+        "summary": "escape",
+        "ops": [],
+    }
+
+    with pytest.raises(ValueError, match="invalid property_id"):
+        apply_patch_plan(plan, wiki_dir=wiki_dir, vocabulary_path=VOCABULARY)

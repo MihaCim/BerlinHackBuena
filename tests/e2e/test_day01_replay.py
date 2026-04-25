@@ -22,14 +22,14 @@ STAMMDATEN = REPO_ROOT / "data" / "stammdaten" / "stammdaten.json"
 class _SmartLLM:
     """Returns canned classification + per-event extract plan keyed by event_id."""
 
-    def __init__(self, *, haiku_model: str, sonnet_model: str) -> None:
-        self.haiku_model = haiku_model
-        self.sonnet_model = sonnet_model
+    def __init__(self, *, fast_model: str, smart_model: str) -> None:
+        self.fast_model = fast_model
+        self.smart_model = smart_model
         self.calls: list[str] = []
 
     async def complete(self, *, model: str, system_prompt: str, user_prompt: str) -> str:
         self.calls.append(model)
-        if model == self.haiku_model:
+        if model == self.fast_model:
             return json.dumps(
                 {
                     "signal": True,
@@ -138,13 +138,13 @@ async def test_day01_replay_end_to_end(tmp_path: Path) -> None:
         wiki_dir=wiki_dir,
         normalize_dir=normalize_dir,
         output_dir=output_dir,
-        data_dir=REPO_ROOT / "data",
+        data_dir=tmp_path,
         webhook_hmac_secret="e2e-secret",
         env="dev",
     )
     fake_llm: LLMClient = _SmartLLM(
-        haiku_model=settings.haiku_model,
-        sonnet_model=settings.sonnet_model,
+        fast_model=settings.fast_model,
+        smart_model=settings.smart_model,
     )
 
     app.dependency_overrides[get_settings] = lambda: settings

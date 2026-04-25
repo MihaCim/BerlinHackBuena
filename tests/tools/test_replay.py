@@ -124,6 +124,7 @@ def test_iter_day_events_attaches_source_paths(tmp_path: Path) -> None:
 async def test_replay_day_signs_and_posts(tmp_path: Path, settings: Settings) -> None:
     day = _build_day(tmp_path)
     secret = "shh"
+    settings.data_dir = tmp_path
     settings.webhook_hmac_secret = secret
     spy = CapturingSupervisor()
     app.dependency_overrides[get_settings] = lambda: settings
@@ -148,6 +149,7 @@ async def test_replay_day_rejects_when_secret_mismatches(
     tmp_path: Path, settings: Settings
 ) -> None:
     day = _build_day(tmp_path)
+    settings.data_dir = tmp_path
     settings.webhook_hmac_secret = "right"
     app.dependency_overrides[get_settings] = lambda: settings
     transport = ASGITransport(app=app)
@@ -162,6 +164,7 @@ async def test_replay_day_rejects_when_secret_mismatches(
 
 async def test_replay_day_limit(tmp_path: Path, settings: Settings) -> None:
     day = _build_day(tmp_path)
+    settings.data_dir = tmp_path
     settings.webhook_hmac_secret = "shh"
     spy = CapturingSupervisor()
     app.dependency_overrides[get_settings] = lambda: settings

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import PurePosixPath
 from typing import Any
 
 from app.core.config import REPO_ROOT, Settings
@@ -9,9 +8,8 @@ from app.schemas.patch_plan import PatchPlan
 from app.services.llm.client import LLMClient
 from app.services.llm.json import parse_json_object
 from app.services.locate import LocatedSection
+from app.services.patcher.paths import normalize_property_file
 from app.services.resolve import ResolutionResult
-
-_MIN_WIKI_PATH_PARTS = 2
 
 
 def extract_prompt(
@@ -62,7 +60,7 @@ async def extract_patch_plan(
     settings: Settings,
 ) -> PatchPlan:
     response = await llm.complete(
-        model=settings.sonnet_model,
+        model=settings.smart_model,
         system_prompt=_extract_system_prompt(),
         user_prompt=extract_prompt(
             event_id=event_id,
@@ -92,9 +90,9 @@ def canonicalize_patch_plan(
     source_ids: list[str] | None = None,
 ) -> PatchPlan:
     data = dict(payload)
-    data["event_id"] = str(data.get("event_id") or event_id)
-    data["property_id"] = str(data.get("property_id") or property_id)
-    data["event_type"] = str(data.get("event_type") or event_type)
+    data["event_id"] = event_id
+    data["property_id"] = property_id
+    data["event_type"] = event_type
     if source_ids and not data.get("source_ids"):
         data["source_ids"] = source_ids
     data["ops"] = [_canonical_op(op, property_id=property_id) for op in data.get("ops", [])]
@@ -121,13 +119,7 @@ def _canonical_op(raw: object, *, property_id: str) -> dict[str, Any]:
 
 
 def _normalize_file(path: str, *, property_id: str) -> str:
-    pure = PurePosixPath(path.replace("\\", "/"))
-    parts = pure.parts
-    if len(parts) >= _MIN_WIKI_PATH_PARTS and parts[0] == "wiki" and parts[1] == property_id:
-        return str(PurePosixPath(*parts[2:]))
-    if parts and parts[0] == property_id:
-        return str(PurePosixPath(*parts[1:]))
-    return str(pure)
+    return normalize_property_file(path, property_id=property_id)
 
 
 def _extract_system_prompt() -> str:
