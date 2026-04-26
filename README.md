@@ -15,6 +15,7 @@ It ingests bank rows, invoices, emails, letters, master data, and incremental up
 - Preserve human edits inside `<user>...</user>` blocks during future patches.
 - Stage new resources under `outputs/intake/`.
 - Process staged resources with a schema-guided intake agent.
+- Ask questions through a schema-guided chat agent with local frontend threads.
 - Reject obvious spam or invalid resources without changing `context.md`.
 - Write accepted resources into the correct context section with protected `AGENT_INTAKE` blocks.
 - See readiness signals for context state, patch count, protected user edits, staged resources, and AI configuration.
@@ -25,6 +26,7 @@ It ingests bank rows, invoices, emails, letters, master data, and incremental up
 .
 |-- context_engine/        # Python package, CLI, LangGraph workflow, web app
 |-- data/                  # Source data: bank, emails, invoices, letters, master data, deltas
+|-- frontend/              # Next.js dynamic frontend
 |-- outputs/               # Generated local artifacts, ignored by git
 |-- schemas/               # Markdown schemas that guide agentic validation and writes
 |-- tests/                 # Unit and web API tests
@@ -54,30 +56,48 @@ ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct
 
 AI is optional. Without a key, the engine still runs deterministically.
 
-## Run The App
+## Run The Next.js App
 
-Start the web dashboard:
+Start the Python API:
 
 ```powershell
 python -m context_engine serve --host 127.0.0.1 --port 8765
 ```
 
+In a second terminal, start the Next.js frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
 Open:
 
 ```text
-http://127.0.0.1:8765
+http://127.0.0.1:3000
+```
+
+The Next.js app proxies `/api/*` to `http://127.0.0.1:8765` by default. To point it at another backend:
+
+```powershell
+$env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8765"
+npm run dev
 ```
 
 Recommended manual flow:
 
-1. Click `Bootstrap context`.
+1. Start the Python API and Next.js frontend.
 2. Ask a question in the `Ask` card.
-3. Open `Resource Intake` and stage a sample email or text.
-4. Scroll to `Artifact`.
-5. Click `Edit context`.
-6. Change a line in `context.md`.
-7. Click `Save with <user> tags`.
-8. Apply a delta and confirm the user edit remains in the artifact.
+3. Click `Add resource` and stage a sample email or text.
+4. Click `Process staged`.
+5. Open the `Artifact` column.
+6. Click `Edit context`.
+7. Change a line in `context.md`.
+8. Click `Save with <user> tags`.
+9. Confirm the saved artifact contains protected `<user>...</user>` blocks.
+
+The Python server is now API-only. The frontend lives in the dynamic Next.js app at `http://127.0.0.1:3000`.
 
 ## CLI Usage
 
@@ -144,6 +164,7 @@ The intake agent reads markdown schemas from `schemas/`:
 - `PARSER_SCHEMA.md`: defines source families, filename patterns, entity patterns, and email classification/score rules.
 - `RENDER_SCHEMA.md`: defines `context.md` section order, anchors, titles, and renderer tool names.
 - `PATCH_SCHEMA.md`: defines patchable sections and locked block patterns.
+- `CHAT_AGENT_SCHEMA.md`: defines the safe read-only agent contract for chatbot answers.
 
 This keeps the feature agentic but controlled. The agent can validate, route, summarize, and write accepted resources, but it cannot edit arbitrary files or remove protected user context.
 
@@ -155,6 +176,14 @@ Run:
 
 ```powershell
 python -m pytest -q -p no:cacheprovider
+```
+
+Validate the Next.js frontend:
+
+```powershell
+cd frontend
+npm run typecheck
+npm run build
 ```
 
 The tests cover:

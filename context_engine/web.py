@@ -8,20 +8,18 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from .agent import run_engine
 from .ai import gemini_configured
+from .chat_agent import answer_with_chat_agent
 from .cli import load_local_env
 from .intake_agent import process_staged_intake
-from .qa import answer_from_context
 from .utils import read_json, read_text, write_json, write_text
 
 
 PROPERTY_ID = "LIE-001"
-STATIC_DIR = Path(__file__).parent / "web_static"
 
 
 class RunRequest(BaseModel):
@@ -59,11 +57,13 @@ def create_app(source_root: Path | str = Path("data"), output_root: Path | str =
     app = FastAPI(title="Buena Context Engine")
     app.state.source_root = Path(source_root)
     app.state.output_root = Path(output_root)
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.get("/")
-    def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+    def index() -> dict[str, str]:
+        return {
+            "name": "Buena Context Engine API",
+            "frontend": "Run the Next.js app from ./frontend on http://127.0.0.1:3000",
+        }
 
     @app.get("/api/status")
     def status() -> dict[str, Any]:
@@ -129,11 +129,11 @@ def create_app(source_root: Path | str = Path("data"), output_root: Path | str =
         return result
 
     @app.post("/api/ask")
-    def ask(payload: AskRequest) -> dict[str, str]:
+    def ask(payload: AskRequest) -> dict[str, Any]:
         context_path = context_file(app.state.output_root)
         if not context_path.exists():
             raise HTTPException(status_code=404, detail="Run bootstrap first.")
-        return {"answer": answer_from_context(context_path, payload.question, use_ai=payload.use_ai)}
+        return answer_with_chat_agent(context_path, payload.question, use_ai=payload.use_ai)
 
     @app.get("/api/resources")
     def resources() -> dict[str, Any]:
