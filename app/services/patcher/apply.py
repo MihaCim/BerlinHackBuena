@@ -46,14 +46,20 @@ def apply_patch_plan(plan: PatchPlan, *, wiki_dir: Path) -> PatchApplyResult:
     property_root.mkdir(parents=True, exist_ok=True)
 
     touched: list[Path] = []
+    unique_touched: list[Path] = []
+    seen: set[Path] = set()
     for op in plan.ops:
         path = _apply_one(property_root, op)
-        if path is not None:
-            touched.append(path)
+        if path is None:
+            continue
+        touched.append(path)
+        if path not in seen:
+            seen.add(path)
+            unique_touched.append(path)
 
     summary = plan.summary.strip() or plan.event_type
     commit_sha = commit_all(wiki_dir, message=f"ingest({plan.event_id}): {summary}".strip())
-    rels = tuple(_relative_posix(p, property_root) for p in touched)
+    rels = tuple(_relative_posix(p, property_root) for p in unique_touched)
     return PatchApplyResult(
         event_id=plan.event_id,
         applied_ops=len(touched),

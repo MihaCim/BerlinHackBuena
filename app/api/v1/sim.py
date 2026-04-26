@@ -5,12 +5,14 @@ import json
 import subprocess
 import tempfile
 import time
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import anyio
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.core.config import REPO_ROOT, Settings, get_settings
@@ -89,11 +91,65 @@ def list_incremental() -> list[SimDay]:
     return days
 
 
+@router.post("/ingest/stream")
+async def sim_ingest_stream(
+    body: SimIngestRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StreamingResponse:
+    return StreamingResponse(
+        _sim_ingest_event_stream(body, settings),
+        media_type="text/event-stream",
+        headers={
+            "cache-control": "no-cache",
+            "connection": "keep-alive",
+            "x-accel-buffering": "no",
+        },
+    )
+
+
+async def _sim_ingest_event_stream(
+    body: SimIngestRequest, settings: Settings
+) -> AsyncGenerator[str]:
+    send, recv = anyio.create_memory_object_stream[tuple[str, dict[str, Any]]](64)
+
+    async def emit(name: str, data: dict[str, Any]) -> None:
+        await send.send((name, data))
+
+    async def runner() -> None:
+        try:
+            payload = await _run_sim_ingest(body, settings, on_stage=emit)
+            await send.send(("response", payload))
+        except HTTPException as exc:
+            await send.send(("error", {"status": exc.status_code, "detail": str(exc.detail)}))
+        except Exception as exc:
+            log.exception("sim_ingest_stream_failed", event_id=body.id)
+            await send.send(("error", {"status": 500, "detail": str(exc)}))
+        finally:
+            await send.aclose()
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(runner)
+        async with recv:
+            async for name, data in recv:
+                msg = json.dumps({"stage": name, "data": data}, separators=(",", ":"), default=str)
+                yield f"event: stage\ndata: {msg}\n\n"
+
+
 @router.post("/ingest", response_model=SimIngestResponse)
 async def sim_ingest(
     body: SimIngestRequest,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> SimIngestResponse:
+    payload = await _run_sim_ingest(body, settings, on_stage=None)
+    return SimIngestResponse(**payload)
+
+
+async def _run_sim_ingest(
+    body: SimIngestRequest,
+    settings: Settings,
+    *,
+    on_stage: Any | None,
+) -> dict:
     day_dir = INCREMENTAL_DIR / f"day-{body.day:02d}"
     if not day_dir.is_dir():
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"day-{body.day:02d} missing")
@@ -113,7 +169,7 @@ async def sim_ingest(
 
     t0 = time.time()
     try:
-        result = await sup.handle(event)
+        result = await sup.handle(event, on_stage=on_stage)
     except Exception as exc:
         log.exception("sim_ingest_failed", event_id=item.id)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"ingest failed: {exc}") from exc
@@ -138,23 +194,23 @@ async def sim_ingest(
     if handler_result and isinstance(handler_result, str):
         normalized_text = handler_result
 
-    return SimIngestResponse(
-        status=result.status,
-        workspace=str(workspace),
-        wiki_dir=str(sim_settings.wiki_dir),
-        provider=sim_settings.llm_provider,
-        fast_model=sim_settings.fast_model,
-        smart_model=sim_settings.smart_model,
-        duration_ms=dt,
-        classification=classification,
-        applied_ops=result.patch.applied_ops if result.patch else 0,
-        commit_sha=result.patch.commit_sha if result.patch else None,
-        idempotent=result.patch.idempotent if result.patch else False,
-        touched=touched,
-        files=files,
-        normalized_text=normalized_text,
-        git_log=git_lines,
-    )
+    return {
+        "status": result.status,
+        "workspace": str(workspace),
+        "wiki_dir": str(sim_settings.wiki_dir),
+        "provider": sim_settings.llm_provider,
+        "fast_model": sim_settings.fast_model,
+        "smart_model": sim_settings.smart_model,
+        "duration_ms": dt,
+        "classification": classification,
+        "applied_ops": result.patch.applied_ops if result.patch else 0,
+        "commit_sha": result.patch.commit_sha if result.patch else None,
+        "idempotent": result.patch.idempotent if result.patch else False,
+        "touched": touched,
+        "files": [f.model_dump() for f in files],
+        "normalized_text": normalized_text,
+        "git_log": git_lines,
+    }
 
 
 def _git_log_lines(wiki_dir: Path) -> list[str]:

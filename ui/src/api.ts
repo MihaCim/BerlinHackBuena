@@ -110,6 +110,75 @@ export async function runSimIngest(body: {
   return r.json();
 }
 
+export type SimStageEvent = {
+  stage: string;
+  data: Record<string, unknown>;
+};
+
+export async function runSimIngestStream(
+  body: {
+    day: number;
+    kind: "email" | "invoice" | "bank";
+    id: string;
+    mode: "isolated" | "live";
+    property_id?: string;
+  },
+  handlers: {
+    onStage: (ev: SimStageEvent) => void;
+    onResponse: (resp: SimIngestResponse) => void;
+    onError: (err: { status: number; detail: string }) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  const r = await fetch(`${base}/sim/ingest/stream`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!r.ok || !r.body) {
+    const detail = await r.text().catch(() => "");
+    throw new Error(`sim/ingest/stream ${r.status}: ${detail}`);
+  }
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const block = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      const dataLine = block
+        .split("\n")
+        .find((l) => l.startsWith("data:"));
+      if (!dataLine) continue;
+      const json = dataLine.slice(5).trim();
+      try {
+        const parsed = JSON.parse(json) as
+          | { stage: string; data: Record<string, unknown> }
+          | Record<string, unknown>;
+        const stage = (parsed as { stage?: string }).stage;
+        if (stage === "response") {
+          handlers.onResponse(
+            (parsed as { data: SimIngestResponse }).data,
+          );
+        } else if (stage === "error") {
+          handlers.onError(
+            (parsed as { data: { status: number; detail: string } }).data,
+          );
+        } else if (typeof stage === "string") {
+          handlers.onStage(parsed as SimStageEvent);
+        }
+      } catch {
+        // ignore malformed
+      }
+    }
+  }
+}
+
 export type HumanNotes = { path: string; body: string };
 
 export async function fetchHumanNotes(path: string): Promise<HumanNotes> {

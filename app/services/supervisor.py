@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import structlog
 from fastapi import Depends
@@ -24,6 +25,12 @@ from app.storage.wiki_chunks import open_wiki_chunks
 
 log = structlog.get_logger(__name__)
 
+StageCallback = Callable[[str, dict[str, Any]], Awaitable[None]]
+
+
+async def _noop_stage(_name: str, _data: dict[str, Any]) -> None:
+    return None
+
 
 @dataclass(frozen=True)
 class SupervisorResult:
@@ -38,14 +45,42 @@ class Supervisor:
         self._settings = settings
         self._llm = llm
 
-    async def handle(self, event: IngestEvent) -> SupervisorResult:
+    async def handle(
+        self,
+        event: IngestEvent,
+        *,
+        on_stage: StageCallback | None = None,
+    ) -> SupervisorResult:
+        emit = on_stage or _noop_stage
+        await emit(
+            "normalize",
+            {"event_id": event.event_id, "event_type": event.event_type},
+        )
         handler = get_event_handler(event.event_type)
         normalized = await handler.handle(event, self._settings)
+        await emit(
+            "normalize.done",
+            {
+                "normalized_path": str(normalized.normalized_path),
+                "chars": len(normalized.normalized_text),
+                "preview": normalized.normalized_text[:280],
+            },
+        )
 
+        await emit("classify", {})
         classification = await classify_document(
             normalized_text=normalized.normalized_text,
             llm=self._llm,
             settings=self._settings,
+        )
+        await emit(
+            "classify.done",
+            {
+                "signal": classification.signal,
+                "category": classification.category,
+                "priority": classification.priority,
+                "confidence": classification.confidence,
+            },
         )
         if not classification.signal:
             log.info(
@@ -54,15 +89,22 @@ class Supervisor:
                 event_type=event.event_type,
                 category=classification.category,
             )
+            await emit("done", {"status": "no_signal"})
             return SupervisorResult(event.event_id, "no_signal", classification, None)
 
+        await emit("resolve", {})
         stammdaten = self._open_stammdaten(property_id=event.property_id)
         resolution = resolve_context(
             normalized_text=normalized.normalized_text,
             stammdaten=stammdaten,
             property_id=event.property_id,
         )
+        await emit(
+            "resolve.done",
+            {"entity_ids": list(resolution.entity_ids)},
+        )
 
+        await emit("locate", {})
         wiki_chunks_db = self._wiki_chunks_db_path()
         property_root = self._settings.wiki_dir / event.property_id
         if property_root.is_dir():
@@ -82,9 +124,14 @@ class Supervisor:
             )
         else:
             sections = []
+        await emit(
+            "locate.done",
+            {"sections": [getattr(s, "path", str(s)) for s in sections][:10]},
+        )
 
         existing_pages = _list_existing_pages(property_root)
 
+        await emit("extract", {})
         plan = await extract_patch_plan(
             event_id=event.event_id,
             event_type=event.event_type,
@@ -96,24 +143,52 @@ class Supervisor:
             llm=self._llm,
             settings=self._settings,
         )
+        await emit(
+            "extract.done",
+            {
+                "ops": len(plan.ops),
+                "summary": plan.summary,
+                "op_kinds": [type(op).__name__ for op in plan.ops],
+            },
+        )
 
+        await emit("patch", {})
         patch = apply_patch_plan(plan, wiki_dir=self._settings.wiki_dir)
+        await emit(
+            "patch.done",
+            {
+                "applied_ops": patch.applied_ops,
+                "touched": list(patch.touched),
+                "commit": patch.commit_sha[:10] if patch.commit_sha else None,
+            },
+        )
 
+        await emit("index", {})
         index_path = regenerate_index(self._settings.wiki_dir / event.property_id)
         if index_path is not None:
             commit_all(
                 self._settings.wiki_dir,
                 message=f"index({event.property_id}): regen after {event.event_id}",
             )
+            index_rel = index_path.relative_to(property_root).as_posix()
+            new_touched = (
+                patch.touched if index_rel in patch.touched else (*patch.touched, index_rel)
+            )
             patch = PatchApplyResult(
                 event_id=patch.event_id,
                 applied_ops=patch.applied_ops,
                 commit_sha=head_sha(self._settings.wiki_dir),
-                touched=(*patch.touched, index_path.relative_to(property_root).as_posix()),
+                touched=new_touched,
                 idempotent=patch.idempotent,
             )
 
+        await emit(
+            "index.done",
+            {"index_regenerated": index_path is not None},
+        )
+
         files_to_reindex = [t for t in patch.touched if t.endswith(".md")]
+        await emit("reindex", {"files": files_to_reindex})
         if files_to_reindex:
             reindex_files(
                 wiki_dir=self._settings.wiki_dir,
@@ -121,7 +196,9 @@ class Supervisor:
                 files=files_to_reindex,
                 db_path=wiki_chunks_db,
             )
+        await emit("reindex.done", {"count": len(files_to_reindex)})
 
+        await emit("done", {"status": "applied"})
         return SupervisorResult(event.event_id, "applied", classification, patch)
 
     def record_failed_event(self, event: IngestEvent, reason: str) -> None:
