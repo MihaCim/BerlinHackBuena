@@ -8,7 +8,7 @@ Cross-tool memory file for Claude Code, Cursor, Codex, and any other agent. Sour
 
 ## What this repo is
 
-Living building memory for Buena (Berlin property mgmt). Pipeline ingests emails / invoices / bank tx / raw master data from `data/stammdaten/`, compresses it into one `index.md` per property. External AI agent fetches the property context over HTTP. Full PRD: `PRD_Overview`. Hackathon scope: 48h MVP.
+Living building memory for Buena (Berlin property mgmt). Pipeline ingests emails / invoices / bank tx / `stammdaten.json`, compresses into one `building.md` per property. External AI agent fetches `building.md` over HTTP. Full PRD: `PRD_Overview`. Hackathon scope: 48h MVP.
 
 ## Tech stack (2026-04 baseline)
 
@@ -48,7 +48,7 @@ tests/
   test_*.py
 data/                  # raw source dataset (read-only)
 schema/                # extraction prompts + WIKI_SCHEMA
-wiki/                  # property context wiki generated/updated by pipeline
+output/                # building.md files (written by pipeline, served by API)
 ```
 
 Rule: `api/` knows about `services/`, never the reverse. `services/` knows about external IO + `core/`. `schemas/` is leaf — imports nothing project-internal except other schemas.

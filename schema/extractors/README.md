@@ -16,7 +16,7 @@ For each extractor call concatenate:
 
 1. `00_shared_rules.md`
 2. the specific extractor file
-3. file content + metadata (resolved entity IDs from the master-data registry if available)
+3. file content + metadata (resolved entity IDs from stammdaten if available)
 
 One call per source file or per homogeneous table.
 
@@ -26,10 +26,10 @@ One call per source file or per homogeneous table.
 |---|---|---|---|
 | 00 | `00_shared_rules.md` | — (prepended to every call) | — |
 | 01 | `01_manifest.md` | `day-NN/incremental_manifest.json` | no |
-| 02 | `02_master_data.md` | `data/stammdaten/*` | no |
+| 02 | `02_stammdaten.md` | `data/stammdaten/*` | no |
 | 03 | `03_emails_index.md` | `day-NN/emails_index.csv` | no |
 | 04 | `04_eml.md` | `day-NN/emails/<YYYY-MM>/*.eml` | yes |
-| 05 | `05_invoices_index.md` | `day-NN/rechnungen_index.csv` | no |
+| 05 | `05_rechnungen_index.md` | `day-NN/rechnungen_index.csv` | no |
 | 06 | `06_invoice_pdf.md` | `day-NN/rechnungen/<YYYY-MM>/*.pdf` | yes |
 | 07 | `07_bank_index.md` | `day-NN/bank/bank_index.csv` | no |
 | 08 | `08_kontoauszug.md` | `day-NN/bank/kontoauszug_delta.csv` | no |

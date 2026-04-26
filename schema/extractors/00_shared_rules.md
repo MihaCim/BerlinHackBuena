@@ -9,9 +9,9 @@ Pure function. No guessing.
 | LIE-001 | `wiki/LIE-001/index.md` |
 | HAUS-12 (in LIE-001) | `wiki/LIE-001/02_buildings/HAUS-12/index.md` |
 | EH-014 (in HAUS-12) | `wiki/LIE-001/02_buildings/HAUS-12/units/EH-014.md` |
-| EIG-014 | `wiki/LIE-001/03_people/owners/EIG-014.md` |
-| MIE-014 | `wiki/LIE-001/03_people/tenants/MIE-014.md` |
-| DL-007 | `wiki/LIE-001/04_service_providers/DL-007.md` |
+| EIG-014 | `wiki/LIE-001/03_people/eigentuemer/EIG-014.md` |
+| MIE-014 | `wiki/LIE-001/03_people/mieter/MIE-014.md` |
+| DL-007 | `wiki/LIE-001/04_dienstleister/DL-007.md` |
 | INV-02103 (2026-04) | `wiki/LIE-001/05_finances/invoices/2026-04/INV-02103.md` |
 
 Normalized source paths (sibling to `wiki/`):
@@ -30,9 +30,9 @@ Normalized source paths (sibling to `wiki/`):
 | `LIE/index.md` | `Buildings`, `Bank Accounts`, `Open Issues`, `Recent Events`, `Procedural Memory`, `Provenance` |
 | `HAUS/index.md` | `Summary`, `Units`, `Open Issues`, `Recent Events`, `Contractors Active`, `Provenance` |
 | `units/EH-XX.md` | `Unit Facts`, `Current Tenant`, `Current Owner`, `History`, `Provenance` |
-| `owners/EIG-XX.md` | `Contact`, `Units Owned`, `Roles`, `Payment History`, `Correspondence Summary`, `Provenance` |
-| `tenants/MIE-XX.md` | `Contact`, `Tenancy`, `Payment History`, `Contact History`, `Provenance` |
-| `service_providers/DL-XX.md` | `Services`, `Contracts`, `Recent Invoices`, `Performance Notes`, `Provenance` |
+| `eigentuemer/EIG-XX.md` | `Contact`, `Units Owned`, `Roles`, `Payment History`, `Correspondence Summary`, `Provenance` |
+| `mieter/MIE-XX.md` | `Contact`, `Tenancy`, `Payment History`, `Contact History`, `Provenance` |
+| `dienstleister/DL-XX.md` | `Services`, `Contracts`, `Recent Invoices`, `Performance Notes`, `Provenance` |
 | `invoices/<YYYY-MM>/INV-XX.md` | `Invoice`, `Line Items`, `Reconciliation`, `Provenance` |
 
 A patch targeting any other section is invalid. If unsure, output a `review_item` instead.
@@ -82,18 +82,18 @@ Entity ID prefixes:
 - `EMAIL-*` `INV-*` `LTR-*` `TX-*` source IDs
 
 Label aliases — normalize source labels to canonical entity types before emitting:
-- owner: Eigentümer, MietEig, Miteigentümer, WEG-Mitglied, Kontakt → `owner`
-- tenant: Mieter, Mieterin, Bewohner, Kontakt → `tenant`
-- unit: Einheit, WE, Wohnung, Apartment, Sondereigentum → `unit`
-- building: Haus, Gebäude, Objekt → `building`
-- property: Liegenschaft, WEG → `property`
-- service provider: Dienstleister, Lieferant, Handwerker, Firma, vendor, contractor → `service_provider`
+- owner: Eigentümer, MietEig, Miteigentümer, WEG-Mitglied, Kontakt → `eigentuemer`
+- tenant: Mieter, Mieterin, Bewohner, Kontakt → `mieter`
+- unit: Einheit, WE, Wohnung, Apartment, Sondereigentum → `einheit`
+- building: Haus, Gebäude, Objekt → `gebaeude`
+- property: Liegenschaft, WEG → `liegenschaft`
+- service provider: Dienstleister, Lieferant, Handwerker, Firma, vendor, contractor → `dienstleister`
 - invoice: Rechnung, Beleg → `invoice`
 - payment: Zahlung, Überweisung, Lastschrift → `bank_transaction`
 
-A bare `Kontakt` is not owner/tenant/service_provider without supporting evidence (master-data ID, email match, unit ownership, tenancy, invoice issuer, role text, address).
+A bare `Kontakt` is not owner/tenant/vendor without supporting evidence (stammdaten ID, email match, unit ownership, tenancy, invoice issuer, role text, address).
 
-Never invent facts. If property/unit/owner/tenant/service_provider cannot be resolved, emit a `review_item` with `review_type: "entity_match"` and DO NOT emit ops that target the unresolved entity.
+Never invent facts. If property/unit/owner/tenant/vendor cannot be resolved, emit a `review_item` with `review_type: "entity_match"` and DO NOT emit ops that target the unresolved entity.
 
 Every fact in any agent-managed bullet/row carries a `[^source]` footnote. If you upsert a bullet/row, you MUST also `upsert_footnote` for each new source ID.
 

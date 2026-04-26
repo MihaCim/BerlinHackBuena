@@ -4,7 +4,7 @@ Input: one `rechnungen_index.csv`.
 
 Columns: `id, rechnungsnr, datum, dienstleister_id, dienstleister_firma, empfaenger, netto, mwst, brutto, iban, error_types, filename, month_dir`.
 
-Goal: per-row source records and service-provider hints. No ops.
+Goal: per-row source records and vendor hints. No ops.
 
 For each row:
 - preserve `INV-*` as `source_id`
@@ -18,15 +18,15 @@ Return:
 
 ```json
 {
-  "extractor": "invoices_index",
+  "extractor": "rechnungen_index",
   "source": { "source_path": "", "source_type": "index_csv" },
   "invoice_sources": [
     {
       "source_id": "",
       "invoice_number": "",
       "invoice_date": null,
-      "service_provider_id": null,
-      "service_provider_name": "",
+      "vendor_id": null,
+      "vendor_name": "",
       "recipient": "",
       "net_amount": null,
       "vat_amount": null,

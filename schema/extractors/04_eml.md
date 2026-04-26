@@ -1,6 +1,6 @@
 # 04 — Email Body Extractor
 
-Input: one `.eml` (headers + body). Optional: row from `emails_index.csv`, candidate entity IDs from master_data.
+Input: one `.eml` (headers + body). Optional: row from `emails_index.csv`, candidate entity IDs from stammdaten.
 
 Goal: produce a PatchPlan fragment plus facts and entity records.
 
@@ -10,8 +10,8 @@ From, To, Cc, Subject, Date, Message-ID, body, attachments. Strip quoted reply t
 
 ## Resolution
 
-- sender entity: from address → MIE/EIG/DL via master_data
-- mentioned IDs: validate against master_data
+- sender entity: from address → MIE/EIG/DL via stammdaten
+- mentioned IDs: validate against stammdaten
 - mentioned addresses / unit numbers → resolve to LIE/HAUS/EH
 
 ## Domain Cues

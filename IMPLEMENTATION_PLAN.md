@@ -6,13 +6,13 @@ Hackathon target: 48h MVP. Tests folded into each phase (TDD-style).
 
 | Fork | Choice |
 |---|---|
-| MVP scope | Full vertical slice for `master_data`, email, invoice, bank, letter; stubs for chat/voice/ERP/manual/schedule/lint |
+| MVP scope | Full vertical slice for `stammdaten`, email, invoice, bank, letter; stubs for chat/voice/ERP/manual/schedule/lint |
 | Output unit | Property tree on disk under `wiki/<LIE-id>/`; API serves `index.md` |
-| Bootstrap | Hybrid — master-data skeleton from raw `data/stammdaten/` → batch replay 2024-2025 → live deltas |
+| Bootstrap | Hybrid — stammdaten skeleton → batch replay 2024-2025 → live deltas |
 | Event delivery | `POST /webhook/ingest` (HMAC-signed) + dev replayer CLI |
 | LLM stack | `LLMClient` Protocol; default Anthropic binding configured by env, tests use `FakeLLMClient` |
 | Prompt contract | One file-type extractor prompt from `schema/extractors/*.md` + shared rules + normalized file content |
-| Indexing | DuckDB with FTS for `master_data`, `source_registry`, `normalized_chunks`, `wiki_chunks`, bank, invoices |
+| Indexing | DuckDB with FTS for `stammdaten`, `source_registry`, `normalized_chunks`, `wiki_chunks`, bank, invoices |
 | Hermes loops | JSONL substrate only; inner/outer loops stubbed |
 | Demo target | Normalize/search + live day replay + wiki patch + reconciliation report |
 | PDF parsing | Docling |
@@ -39,7 +39,7 @@ Hackathon target: 48h MVP. Tests folded into each phase (TDD-style).
 
 ## Phase 1 — Storage layer (~3.5h)
 
-- `app/storage/master_data.py` — load raw `data/stammdaten/stammdaten.json` into `master_data.duckdb` tables (`property`, `building`, `unit`, `owner`, `tenant`, `service_provider`). Indexes on email, IBAN, id.
+- `app/storage/stammdaten.py` — load `data/stammdaten/stammdaten.json` into `stammdaten.duckdb` tables (`liegenschaft`, `gebaeude`, `einheiten`, `eigentuemer`, `mieter`, `dienstleister`). Indexes on email, IBAN, id.
 - `app/storage/source_registry.py` — one logical row per source: `(source_id, source_type, raw_path, normalized_path, sha256, document_date, status, signal_class, entity_refs[], property_refs[], created_at, parsed_at)`.
 - `app/storage/normalized_chunks.py` — normalized markdown sections/snippets: `(source_id, normalized_path, chunk_id, heading, body, entity_refs[], footnote_ids[], sha256)`. FTS for source search.
 - `app/storage/wiki_chunks.py` — `(property_id, file, section, body, entity_refs[], updated_at)`. FTS for wiki search and ingestion-side section locating.
@@ -49,7 +49,7 @@ Hackathon target: 48h MVP. Tests folded into each phase (TDD-style).
 
 **Tests:**
 
-- `tests/storage/test_master_data.py` — load fixture master_data.json → assert row counts (3 buildings, 52 units, 35 owners); lookup by email/IBAN/id returns expected entities.
+- `tests/storage/test_stammdaten.py` — load fixture stammdaten.json → assert row counts (3 gebäude, 52 einheiten, 35 eigentümer); lookup by email/IBAN/id returns expected entities.
 - `tests/storage/test_source_registry.py` — upsert raw + normalized source idempotently by `source_id` and `sha256`; duplicate raw files point to one normalized source.
 - `tests/storage/test_normalized_chunks.py` — index normalized email/invoice markdown → FTS finds body text and filters by source/entity refs.
 - `tests/storage/test_wiki_chunks.py` — insert sections → FTS query returns ranked hits; entity_refs filter works.
@@ -57,18 +57,18 @@ Hackathon target: 48h MVP. Tests folded into each phase (TDD-style).
 
 ## Phase 2 — Wiki bootstrap (~3.5h)
 
-- `app/tools/bootstrap_wiki.py` CLI. Reads master_data, emits skeleton:
+- `app/tools/bootstrap_wiki.py` CLI. Reads stammdaten, emits skeleton:
   - `wiki/LIE-001/index.md` (Buildings, Bank Accounts, Open Issues, Recent Events, Procedural Memory, Provenance)
   - `02_buildings/HAUS-{12,13,…}/index.md` + `units/EH-NNN.md`
-  - `03_people/owners/EIG-NNN.md`, `tenants/MIE-NNN.md`
-  - `04_service_providers/DL-NNN.md`
+  - `03_people/eigentuemer/EIG-NNN.md`, `mieter/MIE-NNN.md`
+  - `04_dienstleister/DL-NNN.md`
   - `05_finances/{overview,reconciliation}.md`, `06_skills.md`, `07_timeline.md`, `_state.json`, `log.md`
 - Each file: `name`/`description` frontmatter + required sections + `# Human Notes` boundary.
-- `git init wiki/` + initial commit `bootstrap: skeleton from master_data`.
+- `git init wiki/` + initial commit `bootstrap: skeleton from stammdaten`.
 
 **Tests:**
 
-- `tests/tools/test_bootstrap.py` — run against fixture master_data in `tmp_path`. Assert: every required file exists; every file has valid `name`/`description` frontmatter; every required section heading present; `# Human Notes` boundary at EOF; `_state.json` valid JSON; `git log` shows one commit.
+- `tests/tools/test_bootstrap.py` — run against fixture stammdaten in `tmp_path`. Assert: every required file exists; every file has valid `name`/`description` frontmatter; every required section heading present; `# Human Notes` boundary at EOF; `_state.json` valid JSON; `git log` shows one commit.
 
 ## Phase 3 — Patcher (~5h)
 
@@ -113,16 +113,16 @@ Pure functions, no LLM.
 ## Phase 5 — LLM steps (~5h)
 
 - `app/services/llm/client.py` — `LLMClient` Protocol; `AnthropicClient` (SDK or httpx binding, depending on Phase 0 decision, prompt caching where supported); `FakeLLMClient`.
-- `app/services/prompts.py` — loads `schema/extractors/00_shared_rules.md` plus exactly one file-type prompt (`01_manifest.md` … `10_coordinator.md`). Rejects missing prompt files at startup.
+- `app/services/prompts.py` — loads `schema/extractors/00_shared_rules.md` plus exactly one file-type prompt (`01_manifest.md`, `02_stammdaten.md`, … `10_coordinator.md`). Rejects missing prompt files at startup.
 - `app/services/classify.py` — `classify_model` call on sender + subject + first 500 chars → `{signal, category, priority, confidence}`. ~90% short-circuit at `signal=false`.
-- `app/services/resolve.py` — deterministic master_data lookups and schema alignment; sender email → `MIE-/EIG-/DL-id`, IBAN → `DL/EIG`, mentioned `EH-/INV-/LTR-` ids validated. Normalizes aliases like `Eigentümer`, `MietEig`, `Kontakt`, `owner`, `Dienstleister`, `vendor` to canonical English wiki entity types such as `owner`, `tenant`, and `service_provider`; routes ambiguous `Kontakt` matches to review.
+- `app/services/resolve.py` — deterministic stammdaten lookups and schema alignment; sender email → `MIE-/EIG-/DL-id`, IBAN → `DL/EIG`, mentioned `EH-/INV-/LTR-` ids validated. Normalizes aliases like `Eigentümer`, `MietEig`, `Kontakt`, `owner`, `Dienstleister`, `vendor` to canonical wiki entity types such as `eigentuemer`, `mieter`, and `dienstleister`; routes ambiguous `Kontakt` matches to review.
 - `app/services/locate.py` — DuckDB FTS query: `SELECT path, section FROM wiki_chunks WHERE property_id=? AND list_contains(entity_refs, ?)`. Returns 3-8 candidates.
 - `app/services/extract.py` — `extract_model` call given normalized doc + resolved IDs + located section bodies + specific extractor prompt + `schema/CLAUDE.md` + `schema/VOCABULARY.md`. Returns `PatchPlan` JSON.
 - `app/services/coordinate.py` — runs `schema/extractors/10_coordinator.md` over per-file extractor JSON for one `day-NN`, producing one final PatchPlan.
 
 **Tests** (all use `FakeLLMClient` injected via `dependency_overrides`):
 
-- `tests/llm/test_classify.py` — fake returns `signal=false` for spam-like fixture; `signal=true, category="tenant/heating"` for heating fixture.
+- `tests/llm/test_classify.py` — fake returns `signal=false` for spam-like fixture; `signal=true, category="mieter/heizung"` for heating fixture.
 - `tests/llm/test_prompts.py` — each extractor prompt loads with shared rules; missing prompt raises at startup.
 - `tests/llm/test_resolve.py` — deterministic; sender `mueller@…` → MIE-007; mentioned `EH-014` validated; unknown IBAN → null; generic `Kontakt` with no role evidence is `needs_review`.
 - `tests/llm/test_locate.py` — given fixture wiki_chunks, query for `MIE-014` returns expected `(file, section)` tuples ranked.
@@ -197,7 +197,7 @@ This is required for the "manage building wiki context for normalization of data
 
 ## Phase 10 — Reconciliation report (~2.5h)
 
-- `app/tools/reconcile.py` — DuckDB joins `bank ⋈ invoices ⋈ master_data` on `referenz_id`. Surfaces seeded anomalies via `error_types` (wrong IBAN, missing ref, duplicates, amount mismatch).
+- `app/tools/reconcile.py` — DuckDB joins `bank ⋈ invoices ⋈ stammdaten` on `referenz_id`. Surfaces seeded anomalies via `error_types` (wrong IBAN, missing ref, duplicates, amount mismatch).
 - Output: `output/reconciliation.md` + Patcher writes the same data to `wiki/LIE-001/05_finances/reconciliation.md` (table form).
 
 **Tests:**
@@ -219,7 +219,7 @@ README demo script, polish pass.
 - `tmp_wiki` fixture — bootstraps a fresh wiki tree under `tmp_path`.
 - `fake_llm` fixture — yields a `FakeLLMClient`; auto-overrides `get_llm_client` Depends provider; clears in teardown.
 - `signed_event` helper — produces HMAC-signed payload for webhook tests.
-- Fixture data lives in `tests/fixtures/` (one .eml, one invoice PDF, one letter PDF, one bank CSV row, master_data subset).
+- Fixture data lives in `tests/fixtures/` (one .eml, one invoice PDF, one letter PDF, one bank CSV row, stammdaten subset).
 - All tests run offline. CI gate runs `ruff format --check && ruff check && ty check && pytest`.
 
 ---
