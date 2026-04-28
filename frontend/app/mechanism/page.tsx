@@ -1,42 +1,236 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Theme = "dark" | "light";
+type FlowKey = "ask" | "resource" | "manual" | "rollback";
 
-const flows = [
+type NodeId =
+  | "sources"
+  | "schemas"
+  | "compiler"
+  | "context"
+  | "chat"
+  | "retrieval"
+  | "model"
+  | "answer"
+  | "resource"
+  | "diff"
+  | "write"
+  | "user"
+  | "guard"
+  | "audit"
+  | "rollback";
+
+type FlowNode = {
+  id: NodeId;
+  title: string;
+  eyebrow: string;
+  x: number;
+  y: number;
+  detail: string;
+  artifacts: string[];
+};
+
+type FlowMode = {
+  key: FlowKey;
+  title: string;
+  summary: string;
+  path: NodeId[];
+};
+
+const nodes: FlowNode[] = [
   {
-    name: "Read question",
-    tag: "chat",
-    steps: ["Route building", "Search context", "Attach citations", "Model synthesis", "Answer"]
+    id: "sources",
+    title: "Source data",
+    eyebrow: "raw input",
+    x: 10,
+    y: 34,
+    detail: "Bank rows, invoices, emails, letters, master data, and incremental folders start here.",
+    artifacts: ["data/bank", "data/emails", "data/briefe", "data/incremental"]
   },
   {
-    name: "Chat write",
-    tag: "write",
-    steps: ["Parse intent", "Permission gate", "Patch context", "Audit event", "Highlight artifact"]
+    id: "schemas",
+    title: "Schema contracts",
+    eyebrow: "rules",
+    x: 18,
+    y: 12,
+    detail: "Markdown schemas describe validation, parsing, rendering, patching, and chat-agent behavior.",
+    artifacts: ["RESOURCE_VALIDATION_SCHEMA.md", "PATCH_SCHEMA.md", "CHAT_AGENT_SCHEMA.md"]
   },
   {
-    name: "Resource intake",
-    tag: "intake",
-    steps: ["Upload/paste", "Spam check", "Schema route", "Dry-run diff", "Approve write"]
+    id: "compiler",
+    title: "Context compiler",
+    eyebrow: "pipeline",
+    x: 27,
+    y: 34,
+    detail: "Deterministic Python executors parse source data and compile the canonical property memory.",
+    artifacts: ["bootstrap", "apply-delta", "replay-deltas"]
   },
   {
-    name: "Rollback",
-    tag: "safety",
-    steps: ["Find audit event", "Preview diff", "Admin gate", "Restore snapshot", "Refresh artifact"]
+    id: "context",
+    title: "Living context",
+    eyebrow: "artifact",
+    x: 49,
+    y: 34,
+    detail: "The generated context.md becomes the working memory for chat, writes, edits, and rollback.",
+    artifacts: ["outputs/properties/LIE-001/context.md", "context.meta.json", "patches/*.json"]
+  },
+  {
+    id: "chat",
+    title: "User asks",
+    eyebrow: "chat",
+    x: 10,
+    y: 67,
+    detail: "A property manager asks a question or uses a write command such as Add note: ...",
+    artifacts: ["frontend chat thread", "question", "actor role"]
+  },
+  {
+    id: "retrieval",
+    title: "Evidence retrieval",
+    eyebrow: "tools",
+    x: 27,
+    y: 67,
+    detail: "The agent routes to a building, searches the context, and extracts cited evidence.",
+    artifacts: ["route_building", "search_context", "citations"]
+  },
+  {
+    id: "model",
+    title: "Academic Cloud",
+    eyebrow: "AI synthesis",
+    x: 49,
+    y: 67,
+    detail: "The model only synthesizes from retrieved evidence. It is not the source of truth.",
+    artifacts: ["llama-3.3-70b-instruct", "model_synthesis", "safe fallback"]
+  },
+  {
+    id: "answer",
+    title: "Cited answer",
+    eyebrow: "output",
+    x: 73,
+    y: 67,
+    detail: "The UI shows the answer, citations, and visual trace so the path is explainable.",
+    artifacts: ["answer", "trace.nodes", "citation cards"]
+  },
+  {
+    id: "resource",
+    title: "Resource intake",
+    eyebrow: "new evidence",
+    x: 73,
+    y: 11,
+    detail: "A user pastes or uploads a resource. The agent checks whether it is useful property evidence.",
+    artifacts: ["email text", "invoice text", "plain notes"]
+  },
+  {
+    id: "diff",
+    title: "Dry-run diff",
+    eyebrow: "preview",
+    x: 88,
+    y: 34,
+    detail: "Before a resource write or rollback, the app shows a side-by-side before/after diff.",
+    artifacts: ["patch_preview", "before", "after"]
+  },
+  {
+    id: "write",
+    title: "Guarded write",
+    eyebrow: "mutation",
+    x: 73,
+    y: 34,
+    detail: "Approver actions write only through registered tools and preserve protected blocks.",
+    artifacts: ["write_context_patch", "permission_gate", "target section"]
+  },
+  {
+    id: "user",
+    title: "Manual edit",
+    eyebrow: "human truth",
+    x: 27,
+    y: 88,
+    detail: "Manual corrections are wrapped in user tags and treated as authoritative context.",
+    artifacts: ["<user> block", "author", "timestamp"]
+  },
+  {
+    id: "guard",
+    title: "Protection guard",
+    eyebrow: "safety",
+    x: 49,
+    y: 88,
+    detail: "Before every candidate write, protected user blocks are compared. If they changed, the write is blocked.",
+    artifacts: ["validate_human_authority", "extract_user_blocks", "blocked write"]
+  },
+  {
+    id: "audit",
+    title: "Audit log",
+    eyebrow: "memory",
+    x: 88,
+    y: 67,
+    detail: "Every write records role, plan, tool calls, result, and before/after snapshots.",
+    artifacts: ["agent_audit", "before_snapshot", "after_snapshot"]
+  },
+  {
+    id: "rollback",
+    title: "Rollback preview",
+    eyebrow: "recovery",
+    x: 73,
+    y: 88,
+    detail: "Admin rollback first previews a diff, then restores an audited before snapshot if approved.",
+    artifacts: ["rollback-preview", "rollback", "admin role"]
   }
 ];
 
-const gates = [
-  "Protected <user> blocks are immutable.",
-  "Every write creates an audit event.",
-  "Resource writes preview a diff before apply.",
-  "Rollback previews the restored state first.",
-  "Academic Cloud only synthesizes from retrieved evidence."
+const flows: FlowMode[] = [
+  {
+    key: "ask",
+    title: "Ask a question",
+    summary: "Question flows through retrieval, AI synthesis, and citations.",
+    path: ["chat", "retrieval", "context", "model", "answer"]
+  },
+  {
+    key: "resource",
+    title: "Add a resource",
+    summary: "New evidence is validated, previewed, guarded, written, and audited.",
+    path: ["resource", "schemas", "diff", "write", "guard", "context", "audit"]
+  },
+  {
+    key: "manual",
+    title: "Manual correction",
+    summary: "Human edits become protected context and guard future writes.",
+    path: ["user", "guard", "context", "retrieval", "model", "answer"]
+  },
+  {
+    key: "rollback",
+    title: "Rollback safely",
+    summary: "Audit snapshots power rollback preview and restore.",
+    path: ["audit", "rollback", "diff", "write", "context"]
+  }
 ];
+
+const nodeById = new Map(nodes.map((node) => [node.id, node]));
+
+function connectionPath(from: FlowNode, to: FlowNode) {
+  const x1 = from.x + 5;
+  const y1 = from.y + 3;
+  const x2 = to.x + 5;
+  const y2 = to.y + 3;
+  const mid = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`;
+}
 
 export default function MechanismPage() {
   const [theme, setTheme] = useState<Theme>("dark");
+  const [activeFlow, setActiveFlow] = useState<FlowKey>("ask");
+  const [activeNodeId, setActiveNodeId] = useState<NodeId>("chat");
+
+  const selectedFlow = flows.find((flow) => flow.key === activeFlow) || flows[0];
+  const selectedNode = nodeById.get(activeNodeId) || nodes[0];
+  const activePath = selectedFlow.path;
+  const activeConnections = useMemo(
+    () =>
+      activePath
+        .slice(0, -1)
+        .map((id, index) => [nodeById.get(id), nodeById.get(activePath[index + 1])] as const)
+        .filter((pair): pair is readonly [FlowNode, FlowNode] => Boolean(pair[0] && pair[1])),
+    [activePath]
+  );
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("buena-theme") as Theme | null;
@@ -50,6 +244,11 @@ export default function MechanismPage() {
     setTheme(next);
     document.documentElement.dataset.theme = next;
     window.localStorage.setItem("buena-theme", next);
+  }
+
+  function selectFlow(flow: FlowMode) {
+    setActiveFlow(flow.key);
+    setActiveNodeId(flow.path[0]);
   }
 
   return (
@@ -75,12 +274,12 @@ export default function MechanismPage() {
 
       <section className="stage mechanism-stage">
         <div className="grid-frame" aria-hidden="true" />
-        <div className="mechanism-shell">
+        <div className="mechanism-shell flow-lab-shell">
           <div className="app-chrome">
             <span className="chrome-dots" aria-hidden="true" />
             <span className="chrome-title">
               <strong>APP.BUENA.MECHANISM</strong>
-              <em>How the property context engine works.</em>
+              <em>Interactive data-flow map.</em>
             </span>
             <span className="app-actions">
               <a className="icon-button tooltip" data-tip="Back to app" href="/" title="Back to app">
@@ -92,85 +291,112 @@ export default function MechanismPage() {
             </span>
           </div>
 
-          <section className="mechanism-hero">
+          <section className="flow-lab-hero">
             <div>
-              <p className="eyebrow">Working Mechanism</p>
-              <h2>Agents read evidence, propose changes, and protect human truth.</h2>
+              <p className="eyebrow">Interactive Mechanism</p>
+              <h2>Watch data move from raw property records into protected context and AI answers.</h2>
             </div>
             <p>
-              The app is not one giant prompt. It is a bounded pipeline: deterministic tools retrieve and guard the
-              context, Academic Cloud synthesizes answers when enabled, and every write passes through safety gates.
+              Choose a path, then click any node. The animated packets show how evidence, patches, user edits, and
+              audit snapshots move through the system.
             </p>
           </section>
 
-          <section className="mechanism-map" aria-label="Visual process map">
+          <section className="flow-lab-controls" aria-label="Choose mechanism path">
             {flows.map((flow) => (
-              <article className="flow-card" key={flow.name}>
-                <div className="flow-head">
-                  <span>{flow.tag}</span>
-                  <h3>{flow.name}</h3>
-                </div>
-                <div className="flow-rail">
-                  {flow.steps.map((step, index) => (
-                    <div className="flow-step" key={step}>
-                      <span>{String(index + 1).padStart(2, "0")}</span>
-                      <strong>{step}</strong>
-                    </div>
-                  ))}
-                </div>
-              </article>
+              <button
+                className={`flow-mode ${flow.key === activeFlow ? "active" : ""}`}
+                key={flow.key}
+                type="button"
+                onClick={() => selectFlow(flow)}
+              >
+                <span>{flow.key}</span>
+                <strong>{flow.title}</strong>
+                <em>{flow.summary}</em>
+              </button>
             ))}
           </section>
 
-          <section className="mechanism-detail-grid">
-            <article>
-              <p className="eyebrow">Read Path</p>
-              <h3>Question to answer</h3>
-              <p>
-                A user asks a question. The route agent selects the building, search retrieves relevant context
-                sections, citations are attached, and the configured Academic Cloud model writes a natural answer from
-                only that evidence.
-              </p>
-            </article>
-            <article>
-              <p className="eyebrow">Write Path</p>
-              <h3>Change to context</h3>
-              <p>
-                Chat write commands and resource intake never edit blindly. They target a section, generate a patch,
-                preserve protected user edits, write an audit event, and refresh the artifact view.
-              </p>
-            </article>
-            <article>
-              <p className="eyebrow">Human Authority</p>
-              <h3>Protected user context</h3>
-              <p>
-                Manual edits are wrapped in <code>&lt;user&gt;</code> tags. Before any agent write, the guard compares
-                protected blocks before and after. If a block changed, the write is blocked.
-              </p>
-            </article>
-            <article>
-              <p className="eyebrow">Recovery</p>
-              <h3>Preview before rollback</h3>
-              <p>
-                Rollback uses audit snapshots. The user previews the diff first, then an admin-level action restores the
-                previous context only after review.
-              </p>
-            </article>
+          <section className="flow-lab-grid">
+            <div className="flow-canvas" aria-label="Animated data flow">
+              <svg className="flow-wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                {activeConnections.map(([from, to], index) => {
+                  const path = connectionPath(from, to);
+                  return (
+                    <g key={`${from.id}-${to.id}`}>
+                      <path className="flow-wire" d={path} />
+                      <circle className="flow-packet" r="0.9" style={{ animationDelay: `${index * 0.38}s` }}>
+                        <animateMotion dur="2.8s" repeatCount="indefinite" path={path} />
+                      </circle>
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {nodes.map((node) => {
+                const isActive = activePath.includes(node.id);
+                const isSelected = activeNodeId === node.id;
+                return (
+                  <button
+                    className={`flow-node ${isActive ? "in-path" : ""} ${isSelected ? "selected" : ""}`}
+                    key={node.id}
+                    style={{ left: `${node.x}%`, top: `${node.y}%` }}
+                    type="button"
+                    onClick={() => setActiveNodeId(node.id)}
+                  >
+                    <span>{node.eyebrow}</span>
+                    <strong>{node.title}</strong>
+                  </button>
+                );
+              })}
+            </div>
+
+            <aside className="flow-inspector">
+              <div>
+                <p className="eyebrow">{selectedNode.eyebrow}</p>
+                <h3>{selectedNode.title}</h3>
+              </div>
+              <p>{selectedNode.detail}</p>
+              <div className="artifact-list">
+                {selectedNode.artifacts.map((artifact) => (
+                  <span key={artifact}>{artifact}</span>
+                ))}
+              </div>
+              <div className="flow-progress">
+                {activePath.map((nodeId, index) => {
+                  const node = nodeById.get(nodeId);
+                  return (
+                    <button
+                      className={nodeId === activeNodeId ? "active" : ""}
+                      key={nodeId}
+                      type="button"
+                      onClick={() => setActiveNodeId(nodeId)}
+                    >
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      {node?.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
           </section>
 
-          <section className="safety-panel">
-            <div>
-              <p className="eyebrow">Safety Contract</p>
-              <h3>Rules every process follows</h3>
-            </div>
-            <div className="safety-grid">
-              {gates.map((gate, index) => (
-                <div className="safety-gate" key={gate}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <p>{gate}</p>
-                </div>
-              ))}
-            </div>
+          <section className="flow-legend">
+            <article>
+              <span className="legend-dot live" />
+              <h3>Moving packets</h3>
+              <p>Animated dots represent evidence, patches, and audit snapshots travelling between bounded tools.</p>
+            </article>
+            <article>
+              <span className="legend-dot selected" />
+              <h3>Active path</h3>
+              <p>The bright nodes are the selected user journey. Switch paths to explain read, write, edit, or rollback.</p>
+            </article>
+            <article>
+              <span className="legend-dot guard" />
+              <h3>Safety gates</h3>
+              <p>Writes pass through role checks, protected user-block validation, diff previews, and audit snapshots.</p>
+            </article>
           </section>
         </div>
       </section>

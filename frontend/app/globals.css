@@ -1091,6 +1091,266 @@ pre {
   color: var(--text-dim);
 }
 
+.flow-lab-shell {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.flow-lab-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.6fr);
+  gap: 24px;
+  padding: 18px;
+  border: 1px solid var(--grid-line);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+}
+
+.flow-lab-hero h2 {
+  max-width: 920px;
+  white-space: normal;
+}
+
+.flow-lab-hero p {
+  margin: 0;
+  color: var(--text-mid);
+  text-transform: none;
+}
+
+.flow-lab-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flow-mode {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 90px;
+  padding: 10px;
+  text-align: left;
+}
+
+.flow-mode.active {
+  color: var(--background);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.flow-mode span,
+.flow-mode em {
+  color: inherit;
+  opacity: 0.68;
+}
+
+.flow-mode strong {
+  font-weight: 400;
+}
+
+.flow-mode em {
+  font-style: normal;
+  text-transform: none;
+}
+
+.flow-lab-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.32fr);
+  gap: var(--tile);
+  min-height: 560px;
+}
+
+.flow-canvas {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--grid-line);
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 32%),
+    linear-gradient(to right, color-mix(in srgb, var(--grid-line) 24%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--grid-line) 24%, transparent) 1px, transparent 1px),
+    var(--panel-bg);
+  background-size: auto, 24px 24px, 24px 24px;
+}
+
+.flow-wires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flow-wire {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent) 54%, var(--grid-line));
+  stroke-dasharray: 3 5;
+  stroke-width: 0.28;
+  vector-effect: non-scaling-stroke;
+}
+
+.flow-packet {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 70%, transparent));
+}
+
+.flow-node {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  width: 124px;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--grid-line);
+  color: var(--text-mid);
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  text-align: left;
+  transform: translate(-50%, -50%);
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.flow-node span {
+  color: inherit;
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.flow-node strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-node.in-path {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--grid-line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.flow-node.selected {
+  color: var(--background);
+  border-color: var(--accent);
+  background: var(--accent);
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+.flow-node.selected strong {
+  color: var(--background);
+}
+
+.flow-inspector {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--grid-line);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+}
+
+.flow-inspector h3 {
+  font-size: 22px;
+  line-height: 24px;
+}
+
+.flow-inspector p {
+  margin: 0;
+  color: var(--text-mid);
+  text-transform: none;
+}
+
+.artifact-list {
+  display: grid;
+  gap: 6px;
+}
+
+.artifact-list span {
+  min-height: 30px;
+  padding: 6px 8px;
+  border: 1px solid var(--grid-line);
+  color: var(--text-primary);
+  background: var(--panel-bg);
+  text-transform: none;
+}
+
+.flow-progress {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.flow-progress button {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.flow-progress button.active {
+  color: var(--background);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.flow-progress span {
+  opacity: 0.66;
+}
+
+.flow-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flow-legend article {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 6px 10px;
+  align-items: start;
+  min-height: 82px;
+  padding: 10px;
+  border: 1px solid var(--grid-line);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+}
+
+.flow-legend h3 {
+  font-size: 14px;
+}
+
+.flow-legend p {
+  grid-column: 2;
+  margin: 0;
+  color: var(--text-mid);
+  text-transform: none;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border: 1px solid var(--grid-line);
+  border-radius: 999px;
+}
+
+.legend-dot.live {
+  background: var(--accent);
+  animation: tracePulse 0.8s ease-in-out infinite alternate;
+}
+
+.legend-dot.selected {
+  border-color: var(--accent);
+}
+
+.legend-dot.guard {
+  background: #b66f63;
+  border-color: #b66f63;
+}
+
 @media (max-width: 1023px) {
   :root {
     --side-pad: 24px;
@@ -1108,12 +1368,16 @@ pre {
 
   .mechanism-map,
   .mechanism-detail-grid,
-  .safety-grid {
+  .safety-grid,
+  .flow-lab-controls,
+  .flow-legend {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .mechanism-hero,
-  .safety-panel {
+  .safety-panel,
+  .flow-lab-hero,
+  .flow-lab-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1172,6 +1436,9 @@ pre {
   .mechanism-map,
   .mechanism-detail-grid,
   .safety-grid,
+  .flow-lab-controls,
+  .flow-lab-grid,
+  .flow-legend,
   .split-row,
   .button-row,
   .ask-box,
