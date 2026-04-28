@@ -10,6 +10,8 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
+from app.api.v1.router import api_router as agent_api_router
+from app.core.config import get_settings
 
 from .agent import run_engine
 from .ai import gemini_configured
@@ -57,6 +59,9 @@ def create_app(source_root: Path | str = Path("data"), output_root: Path | str =
     app = FastAPI(title="Buena Context Engine")
     app.state.source_root = Path(source_root)
     app.state.output_root = Path(output_root)
+    os.environ["APP_OUTPUT_DIR"] = str(app.state.output_root)
+    get_settings.cache_clear()
+    app.include_router(agent_api_router, prefix="/api/v1")
 
     @app.get("/")
     def index() -> dict[str, str]:

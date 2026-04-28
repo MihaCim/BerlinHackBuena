@@ -38,6 +38,21 @@ class WebAppTests(unittest.TestCase):
             self.assertEqual(answer.status_code, 200)
             self.assertIn("financial attention", answer.json()["answer"])
 
+    def test_agent_api_is_mounted_on_main_web_app(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(DATA, Path(tmp)))
+            client.post("/api/bootstrap", json={"use_ai": False})
+
+            response = client.post(
+                "/api/v1/agents/chat",
+                json={"question": "Who owns WE 01?", "building_id": "LIE-001"},
+                headers={"X-Agent-Role": "viewer"},
+            )
+            self.assertEqual(response.status_code, 200)
+            body = response.json()
+            self.assertEqual(body["building_id"], "LIE-001")
+            self.assertIn("trace", body)
+
     def test_artifact_context_edit_is_saved_with_user_tags_and_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             client = TestClient(create_app(DATA, Path(tmp)))

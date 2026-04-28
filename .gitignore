@@ -12,3 +12,5 @@ frontend/tsconfig.tsbuildinfo
 *.sqlite
 *.db
 .env
+.env.local
+.env.*.local

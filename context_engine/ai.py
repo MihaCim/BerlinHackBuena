@@ -7,18 +7,30 @@ import urllib.request
 from typing import Any
 
 
-def gemini_configured() -> bool:
+def ai_configured() -> bool:
     return bool(_academic_key() or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
 
 
-def get_agentic_advice(data: dict[str, Any], use_ai: bool = False) -> str:
-    """Return a short Gemini-generated executive note when configured.
+def gemini_configured() -> bool:
+    """Backward-compatible name used by older status code."""
+    return ai_configured()
 
-    The product is intentionally deterministic by default. Gemini is used as
+
+def active_ai_label() -> str:
+    provider = os.getenv("AI_PROVIDER", "").strip().lower()
+    if provider == "gemini" or (not _academic_key() and (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))):
+        return f"Gemini ({os.getenv('GEMINI_MODEL', 'gemini-flash-latest')})"
+    return f"Academic Cloud ({os.getenv('ACADEMIC_CLOUD_MODEL', os.getenv('AI_MODEL', 'llama-3.3-70b-instruct'))})"
+
+
+def get_agentic_advice(data: dict[str, Any], use_ai: bool = False) -> str:
+    """Return a short AI-generated executive note when configured.
+
+    The product is intentionally deterministic by default. The model is used as
     an agentic reviewer over already-extracted structured facts, not as the
     source of truth.
     """
-    if not use_ai or not gemini_configured():
+    if not use_ai or not ai_configured():
         return ""
     prompt = (
         "You are reviewing a German property-management context compiler output. "
@@ -35,7 +47,8 @@ def get_agentic_advice(data: dict[str, Any], use_ai: bool = False) -> str:
 
 
 def answer_with_gemini(question: str, evidence: list[dict[str, str]], use_ai: bool = False) -> str:
-    if not use_ai or not gemini_configured():
+    """Legacy function name; currently routes to the configured AI provider."""
+    if not use_ai or not ai_configured():
         return ""
     evidence_text = "\n\n".join(
         f"SECTION: {item['title']}\n{item['body']}" for item in evidence[:4]
