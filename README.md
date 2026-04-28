@@ -12,6 +12,9 @@ Buena turns that chaos into one living building memory per property: a clear,
 source-backed knowledge file that people can inspect and AI agents can use
 immediately.
 
+https://www.loom.com/share/39c4214527ed4dd5a4bfc712ab65483a 
+**[▶️ Watch Demo Video](https://www.loom.com/share/39c4214527ed4dd5a4bfc712ab65483a)** - Click to open in Loom
+
 ## The Pitch
 
 The Buena Context Engine is a self-healing context layer for property
