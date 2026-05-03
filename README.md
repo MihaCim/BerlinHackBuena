@@ -58,13 +58,9 @@ Repository map:
 |-- data/                  # Hackathon source data and incremental deltas
 |-- docs/                  # Demo, deployment notes, and screenshots
 |-- frontend/              # Next.js frontend
-|-- schema/                # Additional architecture notes from the main branch
 |-- schemas/               # Markdown task schemas used by agentic flows
 |-- tests/                 # Python tests for engine, web API, and agents
 |-- .env.example           # Safe environment template
-|-- BACKGROUND.md          # Challenge background and problem framing
-|-- IMPLEMENTATION.md      # Implementation notes
-|-- PROJECT_VISUAL_GUIDE.html
 |-- requirements.txt
 `-- pyproject.toml
 ```
