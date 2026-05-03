@@ -1,86 +1,103 @@
-# BerlinHackBuena
+# Buena Context Engine
 
-Buena Context Engine is a hackathon prototype for turning scattered property-management data into one durable, editable context artifact.
+Buena Context Engine is a hackathon prototype for property management teams. It turns scattered real-estate data into one durable, source-backed, agent-readable property context.
 
-It ingests bank rows, invoices, emails, letters, master data, and incremental updates, then writes a canonical `context.md` for one property. The dashboard lets you run the pipeline, ask questions, stage new resources, and safely edit the compiled artifact with protected `<user>` blocks.
+Property managers usually answer questions by jumping across emails, invoices, bank files, PDFs, owner records, tenant data, contractor notes, and previous decisions. This project compiles those fragments into a living `context.md` artifact, then lets an AI-assisted workspace read, explain, update, and protect that context.
+
+## Highlights
+
+- Ingests bank rows, invoices, emails, letters, master data, and incremental daily updates.
+- Builds a canonical `context.md` for property `LIE-001`.
+- Supports natural-language Q&A with evidence retrieval before AI synthesis.
+- Uses Claude or Gemini optionally; the deterministic engine works without an AI key.
+- Lets users add new resources through the frontend and preview guarded writes.
+- Lets users manually edit the artifact while preserving human-confirmed text in protected `<user>...</user>` blocks.
+- Shows an interactive mechanism page that visualizes how data moves from sources to context, chat answers, patches, audit logs, and rollback.
+- Provides a bounded FastAPI agent layer with role-aware read, write, intake, audit, and rollback actions.
 
 ## Screenshots
 
-### Main Context Workspace
+### Context Workspace
 
 ![Buena Context Engine main workspace](docs/screenshots/main-app.png)
 
-### Working Mechanism Page
+### Interactive Mechanism
 
 ![Buena Context Engine mechanism page](docs/screenshots/mechanism.png)
 
-## Demo
+## Demo Flow
 
-Use the guided demo script in [docs/DEMO.md](docs/DEMO.md).
+Use the guided script in [docs/DEMO.md](docs/DEMO.md).
 
-Quick demo flow:
+Quick path:
 
 1. Open `http://127.0.0.1:3000`.
 2. Ask `Who owns WE 01?`.
-3. Open the agent trace and show `model_synthesis`.
+3. Open the agent trace and show the retrieval and synthesis steps.
 4. Ask `Add note: Heating contractor confirmed a follow-up appointment for 2026-04-27.`.
 5. Show the highlighted context update in the artifact.
-6. Open `/mechanism` to explain the pipeline visually.
+6. Open `http://127.0.0.1:3000/mechanism` to explain the system visually.
 
-## What Works Now
+## Architecture
 
-- Compile a base property context from `data/`.
-- Apply incremental day folders as patch updates.
-- Replay all deltas.
-- Ask natural-language questions against the compiled context.
-- Use Claude or Gemini for AI synthesis after deterministic evidence retrieval.
-- Edit `context.md` directly from the frontend.
-- Preserve human edits inside `<user>...</user>` blocks during future patches.
-- Add pasted/file resources from the frontend and preview an agent write before applying it.
-- Ask questions through a schema-guided chat agent with local frontend threads.
-- Reject obvious spam or invalid resources without changing `context.md`.
-- Write accepted resources into the correct context section with protected `AGENT_INTAKE` blocks.
-- See readiness signals for context state, patch count, protected user edits, staged resources, and AI configuration.
-- Return cited agent answers and visual trace data for route, retrieval, model synthesis, citation, and write steps.
-- Auto-route agent requests to the most relevant building context when no building is selected.
-- Roll back audited writes with an admin-only endpoint.
-- Enforce `viewer`, `editor`, `approver`, and `admin` roles for agent actions.
+```text
+source data
+  -> parsers and schema contracts
+  -> entity and source registry
+  -> context compiler
+  -> protected context.md
+  -> chat, graph, resource intake, patch preview, audit, rollback
+```
 
-## Repository Structure
+Repository map:
 
 ```text
 .
-|-- context_engine/        # Python package, CLI, LangGraph workflow, web app
 |-- app/                   # FastAPI bounded agent supervisor API
-|-- data/                  # Source data: bank, emails, invoices, letters, master data, deltas
-|-- docs/                  # Screenshots, deployment notes, and demo script
-|-- frontend/              # Next.js dynamic frontend
-|-- outputs/               # Generated local artifacts, ignored by git
-|-- schemas/               # Markdown schemas that guide agentic validation and writes
-|-- tests/                 # Unit and web API tests
+|-- context_engine/        # CLI, parsers, patcher, renderer, AI adapter, web API
+|-- data/                  # Hackathon source data and incremental deltas
+|-- docs/                  # Demo, deployment notes, and screenshots
+|-- frontend/              # Next.js frontend
+|-- schema/                # Additional architecture notes from the main branch
+|-- schemas/               # Markdown task schemas used by agentic flows
+|-- tests/                 # Python tests for engine, web API, and agents
+|-- .env.example           # Safe environment template
+|-- BACKGROUND.md          # Challenge background and problem framing
 |-- IMPLEMENTATION.md      # Implementation notes
-|-- PROJECT_VISUAL_GUIDE.html # Standalone visual guide for demos and onboarding
-|-- PROBLEM_STATEMENT.md   # Challenge/problem description
-|-- prompt.md              # Manual-edit feature implementation prompt
-|-- requirements.txt       # Python dependencies
+|-- PROJECT_VISUAL_GUIDE.html
+|-- requirements.txt
 `-- pyproject.toml
 ```
 
-## Setup
+## Quick Start
 
-Install dependencies:
+Requirements:
+
+- Python 3.11+
+- Node.js 20+
+- npm
+
+Install Python dependencies:
 
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and fill in your own key:
+Install frontend dependencies:
+
+```powershell
+cd frontend
+npm install
+cd ..
+```
+
+Create your local environment file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Example `.env` values:
+Optional Claude configuration:
 
 ```env
 AI_PROVIDER=claude
@@ -89,11 +106,9 @@ CLAUDE_BASE_URL=https://api.anthropic.com
 CLAUDE_MODEL=claude-sonnet-4-20250514
 ```
 
-AI is optional. Without a key, the engine still runs deterministically.
+AI is optional. Without a key, the context compiler, retrieval, patching, intake guards, and UI still work deterministically.
 
-Security note: `.env` is ignored by git. Do not commit real API keys.
-
-## Run The Next.js App
+## Run Locally
 
 Start the Python API:
 
@@ -101,11 +116,10 @@ Start the Python API:
 python -m context_engine serve --host 127.0.0.1 --port 8765
 ```
 
-In a second terminal, start the Next.js frontend:
+Start the Next.js frontend in a second terminal:
 
 ```powershell
 cd frontend
-npm install
 npm run dev
 ```
 
@@ -115,41 +129,11 @@ Open:
 http://127.0.0.1:3000
 ```
 
-The Next.js app proxies `/api/*` to `http://127.0.0.1:8765` by default. To point it at another backend:
+The frontend proxies `/api/*` to `http://127.0.0.1:8765` by default. To point it at another backend:
 
 ```powershell
-$env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8765"
+$env:NEXT_PUBLIC_API_BASE_URL="https://your-backend-url"
 npm run dev
-```
-
-Recommended manual flow:
-
-1. Start the Python API and Next.js frontend.
-2. Ask a question in the chatbot.
-3. Open the compact trace icon and confirm `model_synthesis` appears for AI answers.
-4. Click the resource icon in the top-right chrome and paste a sample email or text.
-5. Click the preview icon, review the side-by-side diff, then apply the approved write.
-6. In the artifact column, click the edit icon.
-7. Change a line in `context.md`.
-8. Click the save icon to save with `<user>` tags.
-9. Confirm the saved artifact contains protected `<user>...</user>` blocks.
-10. Open `/mechanism` from the mechanism icon to explain the system visually.
-
-The Python server is now API-only. The frontend lives in the dynamic Next.js app at `http://127.0.0.1:3000`.
-
-## Live Deployment
-
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for free hosting options.
-
-Recommended hackathon split:
-
-- Backend: Render free web service
-- Frontend: Vercel free project
-
-Keep API keys only on the backend. The frontend should only receive:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=https://your-backend-url
 ```
 
 ## CLI Usage
@@ -178,7 +162,7 @@ Ask from the compiled context:
 python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What unresolved financial anomalies exist?"
 ```
 
-Use AI synthesis:
+Use optional AI synthesis:
 
 ```powershell
 python -m context_engine ask --context outputs/properties/LIE-001/context.md --question "What should a property manager review first today?" --use-ai
@@ -190,60 +174,45 @@ Show current status:
 python -m context_engine status --output outputs
 ```
 
-Validate staged resources and write accepted evidence into `context.md`:
+Process staged intake resources:
 
 ```powershell
 python -m context_engine process-intake --output outputs
 ```
 
-Status includes:
+## Agentic Guardrails
 
-- Watermark
-- Context existence
-- Latest patch
-- Patch count
-- Protected user edit count
-- Staged resource count
-- AI configured state
-- Extracted metrics
+The repo uses markdown schemas to keep agentic behavior bounded and inspectable:
 
-## Agentic Intake Schemas
+- `schemas/RESOURCE_VALIDATION_SCHEMA.md`: validates resource text and rejects spam/noise.
+- `schemas/CONTEXT_WRITE_SCHEMA.md`: maps accepted resources to safe context sections.
+- `schemas/INGESTION_PROCESS_SCHEMA.md`: describes the end-to-end ingestion process.
+- `schemas/PARSER_SCHEMA.md`: describes source families, filename patterns, and entity patterns.
+- `schemas/RENDER_SCHEMA.md`: defines the `context.md` section order and renderer contract.
+- `schemas/PATCH_SCHEMA.md`: defines patchable sections and locked block patterns.
+- `schemas/CHAT_AGENT_SCHEMA.md`: defines the safe read-only chat contract.
 
-The intake agent reads markdown schemas from `schemas/`:
+The important rule: AI can assist with validation, routing, summarization, and answer synthesis, but source-backed context and protected human edits remain the authority.
 
-- `RESOURCE_VALIDATION_SCHEMA.md`: decides whether a staged resource is valid or spam.
-- `CONTEXT_WRITE_SCHEMA.md`: maps valid resources to allowed `context.md` sections.
-- `INGESTION_PROCESS_SCHEMA.md`: defines the bounded end-to-end process.
-- `PARSER_SCHEMA.md`: defines source families, filename patterns, entity patterns, and email classification/score rules.
-- `RENDER_SCHEMA.md`: defines `context.md` section order, anchors, titles, and renderer tool names.
-- `PATCH_SCHEMA.md`: defines patchable sections and locked block patterns.
-- `CHAT_AGENT_SCHEMA.md`: defines the safe read-only agent contract for chatbot answers.
-
-This keeps the feature agentic but controlled. The agent can validate, route, summarize, and write accepted resources, but it cannot edit arbitrary files or remove protected user context.
-
-The parser, renderer, and patcher still use deterministic Python executors for safety and repeatability, but their task contracts now come from markdown schemas instead of being buried only in code.
-
-## Agent Supervisor API
+## Agent API
 
 The `app/` FastAPI layer exposes a bounded agent API:
 
-- `GET /api/v1/agents/tools`: list the registered tools agents may call.
-- `POST /api/v1/agents/chat`: route to a building, retrieve evidence, optionally synthesize with Claude or Gemini, answer with citations, and return a visual `trace.nodes` pipeline.
-- `POST /api/v1/agents/intake`: validate resource text, reject spam/noise, and dry-run or write a context update.
-- `POST /api/v1/agents/patch`: dry-run or apply a guarded patch.
-- `POST /api/v1/agents/rollback`: restore the before-snapshot from an audited write event.
-- `GET /api/v1/agents/audit/{building_id}`: inspect the audit log for a building.
+- `GET /api/v1/agents/tools`
+- `POST /api/v1/agents/chat`
+- `POST /api/v1/agents/intake`
+- `POST /api/v1/agents/patch`
+- `POST /api/v1/agents/rollback`
+- `GET /api/v1/agents/audit/{building_id}`
 
 Roles are passed with `X-Agent-Role`:
 
-- `viewer`: chat/read only.
+- `viewer`: chat and read-only access.
 - `editor`: dry-run patch and intake.
 - `approver`: write patch and intake.
-- `admin`: rollback plus all lower actions.
+- `admin`: rollback plus all lower permissions.
 
-The Next.js chat tries `/api/v1/agents/chat` first and renders the returned trace visually. If that API is unavailable, it falls back to legacy `/api/ask` and renders a smaller trace from legacy metadata.
-
-Useful chat examples:
+## Useful Chat Examples
 
 ```text
 Who owns WE 01?
@@ -263,13 +232,13 @@ Remember: WE 01 owner asked for a payment status review after the next bank impo
 
 ## Testing
 
-Run:
+Run Python tests:
 
 ```powershell
-python -m pytest -q -p no:cacheprovider
+python -m pytest -q
 ```
 
-Validate the Next.js frontend:
+Validate the frontend:
 
 ```powershell
 cd frontend
@@ -277,29 +246,44 @@ npm run typecheck
 npm run build
 ```
 
-The tests cover:
+Current coverage includes:
 
-- Status before generation
-- Bootstrap and ask API flow
-- Direct artifact editing with protected `<user>` tags
-- Preservation of user edits after delta patching
-- Resource intake staging
+- Context compilation and delta replay
+- Protected `<user>` edit preservation
+- Resource intake staging and guarded writes
 - Agent citations and visual trace nodes
-- Claude/Gemini model-synthesis trace when `use_ai=true`
+- Claude/Gemini model-synthesis path when `use_ai=true`
 - Multi-building auto-routing
 - Role-based write and rollback permissions
-- Rollback from audited write snapshots
+- Frontend production build
+
+## Deployment
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Recommended free split:
+
+- Backend: Render or Railway Python service
+- Frontend: Vercel Next.js project
+
+Only the backend should receive API keys. The frontend should only receive:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://your-backend-url
+```
+
+## Security
+
+- `.env` is ignored by git.
+- `outputs/` is ignored by git.
+- Do not commit generated audio/video files or local demo exports.
+- Do not expose API keys with `NEXT_PUBLIC_`.
+- Keep protected `<user>` blocks intact when changing patch logic.
+- Prefer deterministic behavior first; AI should advise or synthesize from retrieved evidence, not become the source of truth.
 
 ## Current Limitations
 
-- Resource intake now writes accepted staged text into `context.md`; deeper native parsing for PDFs/binary files remains a future phase.
-- PDF extraction is represented by the existing sample parsers and source data assumptions.
-- The app currently targets property `LIE-001`.
-- Human edits are intentionally visible in `context.md` so AI and future ingestion can treat them as authoritative.
-
-## Development Notes
-
-- Do not commit `.env`.
-- Do not commit generated `outputs/`.
-- Keep protected `<user>` blocks intact when changing patch logic.
-- Prefer deterministic behavior first; AI should advise or summarize, not become the source of truth.
+- The demo targets property `LIE-001`.
+- Resource intake writes accepted staged text into `context.md`; deeper native parsing for arbitrary binary uploads remains future work.
+- PDF extraction is represented by the existing sample parsers and hackathon data assumptions.
+- Human edits are intentionally visible in `context.md` so future ingestion and AI steps can treat them as authoritative.
