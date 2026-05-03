@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Buena Context Engine Visual Guide</title>
+  <style>
+    :root {
+      --bg: #212121;
+      --panel: #242424;
+      --line: #4c4c4c;
+      --text: #e4e5e7;
+      --muted: #909090;
+      --soft: #c2c2c2;
+      --good: #89a98c;
+      --warn: #c6aa6b;
+      --bad: #b66f63;
+      --tile: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(to right, rgba(76,76,76,.28) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(76,76,76,.28) 1px, transparent 1px),
+        var(--bg);
+      background-size: 24px 24px;
+      color: var(--soft);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      text-transform: uppercase;
+    }
+    main { width: min(1440px, calc(100vw - 28px)); margin: 14px auto; }
+    header, section, article {
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      margin-bottom: var(--tile);
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { color: var(--text); font-size: clamp(24px, 4vw, 56px); line-height: .95; letter-spacing: -.04em; }
+    h2 { color: var(--text); font-size: 18px; font-weight: 400; }
+    h3 { color: var(--text); font-size: 14px; font-weight: 400; }
+    .muted { color: var(--muted); text-transform: none; }
+    .pill {
+      display: inline-grid;
+      place-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .grid { display: grid; gap: var(--tile); }
+    .two { grid-template-columns: .82fr 1.18fr; }
+    .four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .card { padding: 14px; display: grid; gap: 10px; }
+    .hero-copy { max-width: 680px; text-transform: none; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+    .step {
+      position: relative;
+      min-height: 92px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .step:not(:last-child)::after {
+      position: absolute;
+      top: 50%;
+      right: -9px;
+      width: 8px;
+      height: 1px;
+      background: var(--line);
+      content: "";
+    }
+    .step span, .num { color: var(--muted); display: block; margin-bottom: 8px; }
+    .step strong { color: var(--text); font-weight: 400; }
+    .step p { margin-top: 8px; color: var(--muted); text-transform: none; }
+    .good { border-color: color-mix(in srgb, var(--good) 70%, var(--line)); }
+    .warn { border-color: color-mix(in srgb, var(--warn) 70%, var(--line)); }
+    .bad { border-color: color-mix(in srgb, var(--bad) 70%, var(--line)); }
+    .diagram {
+      display: grid;
+      grid-template-columns: 1fr 44px 1fr 44px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .node {
+      min-height: 120px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .arrow { text-align: center; color: var(--text); font-size: 22px; }
+    ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    li {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      text-transform: none;
+    }
+    code { color: var(--text); text-transform: none; }
+    .demo {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 8px;
+      align-items: start;
+    }
+    .demo strong { color: var(--text); font-weight: 400; }
+    footer { color: var(--muted); margin: 16px 0; text-align: center; }
+    @media (max-width: 960px) {
+      .two, .four, .five, .flow, .diagram, .demo { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      .step::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="grid">
+    <header>
+      <div>
+        <p class="pill">APP.BUENA.CONTEXT</p>
+        <h1>One living context for property management.</h1>
+        <p class="hero-copy muted">A hackathon prototype that turns scattered bank records, invoices, emails, letters, and master data into one durable, editable context artifact.</p>
+      </div>
+      <div class="pill">Demo Ready Flow</div>
+    </header>
+
+    <section class="card">
+      <h2>Core Idea</h2>
+      <div class="diagram">
+        <div class="node good">
+          <span class="num">01</span>
+          <h3>Source Data</h3>
+          <p class="muted">Bank rows, invoices, letters, emails, PDFs, master data, and incremental delta folders.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node warn">
+          <span class="num">02</span>
+          <h3>Context Engine</h3>
+          <p class="muted">Parsers, schema-guided agents, deterministic guards, Claude synthesis, and audit logs.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node good">
+          <span class="num">03</span>
+          <h3>context.md</h3>
+          <p class="muted">A single living artifact that the property manager can ask, edit, protect, and update.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid four">
+      <article class="card">
+        <span class="num">READ</span>
+        <h3>Ask Questions</h3>
+        <p class="muted">The chatbot routes to a building, retrieves evidence, attaches citations, then lets Claude synthesize a natural answer.</p>
+      </article>
+      <article class="card">
+        <span class="num">WRITE</span>
+        <h3>Add Context</h3>
+        <p class="muted">Chat write commands and resource intake create guarded patches instead of editing files randomly.</p>
+      </article>
+      <article class="card">
+        <span class="num">PROTECT</span>
+        <h3>Human Truth</h3>
+        <p class="muted">Manual corrections are wrapped in <code>&lt;user&gt;</code> tags and preserved across future ingestion.</p>
+      </article>
+      <article class="card">
+        <span class="num">RECOVER</span>
+        <h3>Rollback</h3>
+        <p class="muted">Every write can be audited. Rollback shows a diff before restoring an older snapshot.</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Chat Question Flow</h2>
+      <div class="flow">
+        <div class="step good"><span>01</span><strong>Route Building</strong><p>Selects the relevant property context, usually LIE-001 for the demo.</p></div>
+        <div class="step good"><span>02</span><strong>Search Context</strong><p>Finds the strongest sections and quotes from context.md.</p></div>
+        <div class="step warn"><span>03</span><strong>Model Synthesis</strong><p>Claude writes the final answer from retrieved evidence only.</p></div>
+        <div class="step good"><span>04</span><strong>Citations</strong><p>Returns source section names and snippets for trust.</p></div>
+        <div class="step good"><span>05</span><strong>Visual Trace</strong><p>The UI shows the route/search/model/citation path.</p></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Write And Intake Flow</h2>
+      <div class="flow">
+        <div class="step"><span>01</span><strong>User Input</strong><p>Paste a resource or type a command like <code>Add note:</code>.</p></div>
+        <div class="step warn"><span>02</span><strong>Validation</strong><p>Reject spam/noise and route to an allowed context section.</p></div>
+        <div class="step good"><span>03</span><strong>Dry-run Diff</strong><p>Preview before/after changes before applying resource writes.</p></div>
+        <div class="step good"><span>04</span><strong>Guarded Write</strong><p>Preserve protected user blocks and append an audit event.</p></div>
+        <div class="step good"><span>05</span><strong>Highlight</strong><p>Refresh artifact and scroll to the inserted context.</p></div>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article class="card">
+        <h2>Safety Gates</h2>
+        <ul>
+          <li><strong>Role gates:</strong> viewer reads, editor previews, approver writes, admin rolls back.</li>
+          <li><strong>User block guard:</strong> any changed <code>&lt;user&gt;</code> block blocks the write.</li>
+          <li><strong>Diff preview:</strong> resource and rollback flows show changes before apply.</li>
+          <li><strong>Audit log:</strong> writes keep before/after snapshots for recovery.</li>
+          <li><strong>Evidence boundary:</strong> model answers must use retrieved context only.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h2>Demo Script</h2>
+        <div class="demo"><strong>1. Open app</strong><p class="muted">Show the two-column chatbot + artifact interface.</p></div>
+        <div class="demo"><strong>2. Ask</strong><p class="muted">Try: <code>Who owns WE 01?</code>. Open trace and show <code>model_synthesis</code>.</p></div>
+        <div class="demo"><strong>3. Write</strong><p class="muted">Try: <code>Add note: Heating contractor confirmed a follow-up appointment for 2026-04-27.</code></p></div>
+        <div class="demo"><strong>4. Resource</strong><p class="muted">Paste an email, preview diff, then apply approved write.</p></div>
+        <div class="demo"><strong>5. Protect</strong><p class="muted">Edit artifact manually and show saved <code>&lt;user&gt;</code> tags.</p></div>
+        <div class="demo"><strong>6. Explain</strong><p class="muted">Open <code>/mechanism</code> or this file to show the architecture.</p></div>
+      </article>
+    </section>
+
+    <footer>Buena Context Engine | Built for a hackathon demo | Deterministic tools + guarded AI synthesis</footer>
+  </main>
+</body>
+</html>

@@ -272,8 +272,8 @@ ORDER BY occurrences DESC;
 | Bullet patch into Procedural Memory | **must** | `git diff LIE-001/index.md` shows 1 added line |
 | `_pending_review.md` proposal example | **must** | static example committed to repo for visual |
 | Outer loop nightly Linter pass | **stretch** | manual `linter run-eval --lie LIE-001` on stage |
-| PM approval + auto-apply | **post-MVP** | mention in voiceover only |
-| Schema mutation propagation | **post-MVP** | mention in voiceover only |
+| PM approval + auto-apply | **post-MVP** | mention in demo narrative only |
+| Schema mutation propagation | **post-MVP** | mention in demo narrative only |
 
 The outer-loop story is the architectural moat even when not fully automated in 48h. Manual `linter run-eval` is enough to demo the JSONL → proposal flow live in front of judges.
 

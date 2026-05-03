@@ -1,33 +1,26 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="APP_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
-
-    app_name: str = "buena-context"
-    version: str = "0.1.0"
-    env: Literal["dev", "staging", "prod"] = "dev"
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-
-    data_dir: Path = Field(default=REPO_ROOT / "data")
-    output_dir: Path = Field(default=REPO_ROOT / "output")
+class Settings(BaseModel):
+    app_name: str = "buena-context-agents"
+    version: str = "0.2.0"
+    env: str = "dev"
+    output_dir: Path = REPO_ROOT / "outputs"
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(
+        app_name=os.getenv("APP_NAME", "buena-context-agents"),
+        version=os.getenv("APP_VERSION", "0.2.0"),
+        env=os.getenv("APP_ENV", "dev"),
+        output_dir=Path(os.getenv("APP_OUTPUT_DIR", str(REPO_ROOT / "outputs"))),
+    )

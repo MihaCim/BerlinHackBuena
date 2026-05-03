@@ -1,3 +1,1 @@
-from app.main import app
-
-__all__ = ["app"]
+"""FastAPI app for the bounded property-context agent layer."""

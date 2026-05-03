@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 
 from app.core.config import Settings, get_settings
 from app.main import app
@@ -12,20 +13,23 @@ from app.main import app
 
 @pytest.fixture
 def output_dir(tmp_path: Path) -> Path:
-    d = tmp_path / "output"
-    d.mkdir()
-    return d
+    directory = tmp_path / "agent_buildings"
+    directory.mkdir()
+    return directory
 
 
 @pytest.fixture
-def settings(output_dir: Path) -> Settings:
-    return Settings(output_dir=output_dir, env="dev")
+def settings(output_dir: Path, monkeypatch: MonkeyPatch) -> Settings:
+    monkeypatch.setenv("APP_OUTPUT_DIR", str(output_dir))
+    get_settings.cache_clear()
+    return Settings(output_dir=output_dir)
 
 
 @pytest.fixture
-async def client(settings: Settings) -> AsyncIterator[AsyncClient]:
+def client(settings: Settings) -> Iterator[TestClient]:
     app.dependency_overrides[get_settings] = lambda: settings
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+    get_settings.cache_clear()
+    with TestClient(app) as test_client:
+        yield test_client
     app.dependency_overrides.clear()
+    get_settings.cache_clear()

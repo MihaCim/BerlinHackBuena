@@ -1,36 +1,34 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
-
-import anyio
-from fastapi import Depends
-
-from app.core.config import Settings, get_settings
-from app.schemas.buildings import BuildingId
 
 
 class BuildingMemoryService:
-    """Loads `building.md` for a given canonical building id.
-
-    Storage is a flat directory of `<building_id>.md` under settings.output_dir.
-    Real ingestion pipeline writes here; the API reads.
-    """
-
     def __init__(self, output_dir: Path) -> None:
-        self._output_dir = output_dir
+        self.output_dir = output_dir
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _path(self, building_id: BuildingId) -> Path:
-        return self._output_dir / f"{building_id}.md"
+    def path(self, building_id: str) -> Path:
+        flat = self.output_dir / f"{building_id}.md"
+        nested = self.output_dir / "properties" / building_id / "context.md"
+        if nested.exists():
+            return nested
+        return flat
 
-    async def load(self, building_id: BuildingId) -> str | None:
-        path = self._path(building_id)
-        if not await anyio.Path(path).is_file():
+    def list_buildings(self) -> list[str]:
+        flat = {path.stem for path in self.output_dir.glob("*.md")}
+        nested = {
+            path.parent.name
+            for path in (self.output_dir / "properties").glob("*/context.md")
+            if path.is_file()
+        }
+        return sorted(flat | nested)
+
+    def load(self, building_id: str) -> str | None:
+        path = self.path(building_id)
+        if not path.exists():
             return None
-        return await anyio.Path(path).read_text(encoding="utf-8")
+        return path.read_text(encoding="utf-8")
 
-
-def get_building_memory_service(
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> BuildingMemoryService:
-    return BuildingMemoryService(output_dir=settings.output_dir)
+    def write(self, building_id: str, markdown: str) -> None:
+        self.path(building_id).write_text(markdown, encoding="utf-8")
