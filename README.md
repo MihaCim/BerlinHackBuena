@@ -33,7 +33,7 @@ Quick demo flow:
 - Apply incremental day folders as patch updates.
 - Replay all deltas.
 - Ask natural-language questions against the compiled context.
-- Use Academic Cloud or Gemini for AI synthesis after deterministic evidence retrieval.
+- Use Claude or Gemini for AI synthesis after deterministic evidence retrieval.
 - Edit `context.md` directly from the frontend.
 - Preserve human edits inside `<user>...</user>` blocks during future patches.
 - Add pasted/file resources from the frontend and preview an agent write before applying it.
@@ -83,10 +83,10 @@ Copy-Item .env.example .env
 Example `.env` values:
 
 ```env
-AI_PROVIDER=academiccloud
-ACADEMIC_CLOUD_API_KEY=your_academic_cloud_key_here
-ACADEMIC_CLOUD_BASE_URL=https://chat-ai.academiccloud.de/v1
-ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct
+AI_PROVIDER=claude
+CLAUDE_API_KEY=your_claude_api_key_here
+CLAUDE_BASE_URL=https://api.anthropic.com
+CLAUDE_MODEL=claude-sonnet-4-20250514
 ```
 
 AI is optional. Without a key, the engine still runs deterministically.
@@ -228,7 +228,7 @@ The parser, renderer, and patcher still use deterministic Python executors for s
 The `app/` FastAPI layer exposes a bounded agent API:
 
 - `GET /api/v1/agents/tools`: list the registered tools agents may call.
-- `POST /api/v1/agents/chat`: route to a building, retrieve evidence, optionally synthesize with Academic Cloud/Gemini, answer with citations, and return a visual `trace.nodes` pipeline.
+- `POST /api/v1/agents/chat`: route to a building, retrieve evidence, optionally synthesize with Claude or Gemini, answer with citations, and return a visual `trace.nodes` pipeline.
 - `POST /api/v1/agents/intake`: validate resource text, reject spam/noise, and dry-run or write a context update.
 - `POST /api/v1/agents/patch`: dry-run or apply a guarded patch.
 - `POST /api/v1/agents/rollback`: restore the before-snapshot from an audited write event.
@@ -285,7 +285,7 @@ The tests cover:
 - Preservation of user edits after delta patching
 - Resource intake staging
 - Agent citations and visual trace nodes
-- Academic Cloud/Gemini model-synthesis trace when `use_ai=true`
+- Claude/Gemini model-synthesis trace when `use_ai=true`
 - Multi-building auto-routing
 - Role-based write and rollback permissions
 - Rollback from audited write snapshots

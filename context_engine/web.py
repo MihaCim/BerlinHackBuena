@@ -220,7 +220,7 @@ def read_status(output_root: Path) -> dict[str, Any]:
         "user_edits": count_user_blocks(context_path),
         "staged_resources": len(list(intake_dir.glob("*.resource.json"))) if intake_dir.exists() else 0,
         "ai_configured": gemini_configured(),
-        "ai_provider": os.getenv("AI_PROVIDER", "academiccloud").strip() or "academiccloud",
+        "ai_provider": os.getenv("AI_PROVIDER", "claude").strip() or "claude",
     }
 
 

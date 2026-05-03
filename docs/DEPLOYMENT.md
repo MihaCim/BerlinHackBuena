@@ -12,10 +12,10 @@ Do not commit `.env`. Configure secrets only in your hosting provider's environm
 Backend:
 
 ```env
-AI_PROVIDER=academiccloud
-ACADEMIC_CLOUD_API_KEY=your_key_here
-ACADEMIC_CLOUD_BASE_URL=https://chat-ai.academiccloud.de/v1
-ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct
+AI_PROVIDER=claude
+CLAUDE_API_KEY=your_claude_api_key_here
+CLAUDE_BASE_URL=https://api.anthropic.com
+CLAUDE_MODEL=claude-sonnet-4-20250514
 ```
 
 Frontend:
@@ -105,5 +105,5 @@ http://127.0.0.1:3000
 - `outputs/` is ignored by git and generated locally.
 - Free hosting filesystems can be ephemeral. For a stable public demo, either commit a sanitized demo artifact separately or regenerate context on startup.
 - Keep `.env` out of git.
-- The Academic Cloud key must be configured only on the backend service.
+- The Claude API key must be configured only on the backend service.
 - The frontend should only know the backend URL.

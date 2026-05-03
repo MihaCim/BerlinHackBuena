@@ -8,7 +8,7 @@ from typing import Any
 
 
 def ai_configured() -> bool:
-    return bool(_academic_key() or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
+    return bool(_claude_key() or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
 
 
 def gemini_configured() -> bool:
@@ -18,9 +18,9 @@ def gemini_configured() -> bool:
 
 def active_ai_label() -> str:
     provider = os.getenv("AI_PROVIDER", "").strip().lower()
-    if provider == "gemini" or (not _academic_key() and (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))):
+    if provider == "gemini" or (not _claude_key() and (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))):
         return f"Gemini ({os.getenv('GEMINI_MODEL', 'gemini-flash-latest')})"
-    return f"Academic Cloud ({os.getenv('ACADEMIC_CLOUD_MODEL', os.getenv('AI_MODEL', 'llama-3.3-70b-instruct'))})"
+    return f"Claude ({_claude_model()})"
 
 
 def get_agentic_advice(data: dict[str, Any], use_ai: bool = False) -> str:
@@ -69,46 +69,54 @@ def answer_with_gemini(question: str, evidence: list[dict[str, str]], use_ai: bo
 
 def chat_completion(messages: list[dict[str, str]], temperature: float = 0.1, max_tokens: int = 500) -> tuple[str, str]:
     provider = os.getenv("AI_PROVIDER", "").strip().lower()
-    if provider == "gemini" or (not _academic_key() and (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))):
+    if provider == "gemini" or (not _claude_key() and (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))):
         return _gemini_completion(messages, temperature, max_tokens)
-    return _academic_cloud_completion(messages, temperature, max_tokens)
+    return _claude_completion(messages, temperature, max_tokens)
 
 
-def _academic_cloud_completion(
+def _claude_completion(
     messages: list[dict[str, str]],
     temperature: float,
     max_tokens: int,
 ) -> tuple[str, str]:
-    key = _academic_key()
+    key = _claude_key()
     if not key:
-        return "", "Academic Cloud key is missing. Set `ACADEMIC_CLOUD_API_KEY` in `.env`."
-    base_url = os.getenv("ACADEMIC_CLOUD_BASE_URL", "https://chat-ai.academiccloud.de/v1").rstrip("/")
-    model_name = os.getenv("ACADEMIC_CLOUD_MODEL", os.getenv("AI_MODEL", "llama-3.3-70b-instruct"))
+        return "", "Claude key is missing. Set `CLAUDE_API_KEY` in `.env`."
+    base_url = _claude_base_url()
+    model_name = _claude_model()
+    system_prompt, claude_messages = _to_claude_messages(messages)
     payload = {
         "model": model_name,
-        "messages": messages,
-        "temperature": temperature,
         "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": claude_messages,
     }
+    if system_prompt:
+        payload["system"] = system_prompt
     request = urllib.request.Request(
-        f"{base_url}/chat/completions",
+        _claude_messages_url(base_url),
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        headers={
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        },
         method="POST",
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             data = json.loads(response.read().decode("utf-8"))
-        content = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+        content = "\n".join(
+            item.get("text", "")
+            for item in data.get("content", [])
+            if item.get("type") == "text"
+        ).strip()
         if content:
             return content, ""
-        reasoning = (((data.get("choices") or [{}])[0].get("message") or {}).get("reasoning") or "").strip()
-        if reasoning:
-            return "", f"`{model_name}` returned reasoning but no final answer. Try `ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct`."
-        return "", f"`{model_name}` returned no answer content."
+        return "", f"`{model_name}` returned no answer text."
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        return "", _friendly_academic_error(exc.code, detail, model_name)
+        return "", _friendly_claude_error(exc.code, detail, model_name)
     except Exception as exc:
         return "", str(exc)
 
@@ -128,23 +136,53 @@ def _gemini_completion(messages: list[dict[str, str]], temperature: float, max_t
         return "", _friendly_gemini_error(exc, model_name)
 
 
-def _academic_key() -> str:
+def _claude_key() -> str:
     return (
-        os.getenv("ACADEMIC_CLOUD_API_KEY")
-        or os.getenv("CHAT_AI_API_KEY")
-        or os.getenv("OPENAI_API_KEY")
+        os.getenv("CLAUDE_API_KEY")
+        or os.getenv("ANTHROPIC_API_KEY")
         or ""
     ).strip()
 
 
-def _friendly_academic_error(status_code: int, detail: str, model_name: str) -> str:
+def _claude_base_url() -> str:
+    return (os.getenv("CLAUDE_BASE_URL") or "https://api.anthropic.com").rstrip("/")
+
+
+def _claude_messages_url(base_url: str) -> str:
+    if base_url.endswith("/v1"):
+        return f"{base_url}/messages"
+    return f"{base_url}/v1/messages"
+
+
+def _claude_model() -> str:
+    return os.getenv("CLAUDE_MODEL") or os.getenv("AI_MODEL") or "claude-sonnet-4-20250514"
+
+
+def _to_claude_messages(messages: list[dict[str, str]]) -> tuple[str, list[dict[str, str]]]:
+    system_parts: list[str] = []
+    claude_messages: list[dict[str, str]] = []
+    for message in messages:
+        role = (message.get("role") or "user").strip().lower()
+        content = message.get("content") or ""
+        if role == "system":
+            system_parts.append(content)
+        elif role == "assistant":
+            claude_messages.append({"role": "assistant", "content": content})
+        else:
+            claude_messages.append({"role": "user", "content": content})
+    if not claude_messages:
+        claude_messages.append({"role": "user", "content": ""})
+    return "\n\n".join(system_parts).strip(), claude_messages
+
+
+def _friendly_claude_error(status_code: int, detail: str, model_name: str) -> str:
     if status_code in (401, 403):
-        return "Academic Cloud rejected the API key or account permissions. Check `ACADEMIC_CLOUD_API_KEY`."
+        return "Claude rejected the API key or account permissions. Check `CLAUDE_API_KEY`."
     if status_code == 404:
-        return f"Academic Cloud model or endpoint was not found for `{model_name}`. Check `ACADEMIC_CLOUD_MODEL`."
+        return f"Claude model or endpoint was not found for `{model_name}`. Check `CLAUDE_MODEL` and `CLAUDE_BASE_URL`."
     if status_code == 429:
-        return "Academic Cloud returned rate limit or quota exhaustion. Try again later or choose a smaller model."
-    return f"Academic Cloud returned HTTP {status_code}: {detail[:300]}"
+        return "Claude returned rate limit or quota exhaustion. Try again later or choose a smaller model."
+    return f"Claude returned HTTP {status_code}: {detail[:300]}"
 
 
 def _friendly_gemini_error(exc: Exception, model_name: str) -> str:

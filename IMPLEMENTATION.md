@@ -63,10 +63,10 @@ Open `http://127.0.0.1:8765`.
 
 ## AI Provider
 
-Academic Cloud is the default optional AI provider. Set `ACADEMIC_CLOUD_API_KEY`, then pass `--use-ai`.
+Claude can be used for optional synthesis. Set `CLAUDE_API_KEY`, `CLAUDE_BASE_URL`, and `CLAUDE_MODEL`, then pass `--use-ai`.
 
 ```bash
-$env:ACADEMIC_CLOUD_API_KEY="..."
+$env:CLAUDE_API_KEY="..."
 python -m context_engine bootstrap --source data --output outputs --use-ai
 ```
 
@@ -74,8 +74,8 @@ The engine remains deterministic without an AI provider. The provider is used on
 
 Troubleshooting:
 
-- `401` or `403`: check `ACADEMIC_CLOUD_API_KEY`.
-- `404`: check `ACADEMIC_CLOUD_MODEL`; `llama-3.3-70b-instruct` has been tested.
+- `401` or `403`: check `CLAUDE_API_KEY`.
+- `404`: check `CLAUDE_BASE_URL` and `CLAUDE_MODEL`.
 - `429`: wait or try a smaller/faster model.
 
 ## Local Env File
@@ -83,10 +83,10 @@ Troubleshooting:
 The CLI auto-loads a `.env` file from the repository root. Put your key there:
 
 ```env
-AI_PROVIDER=academiccloud
-ACADEMIC_CLOUD_API_KEY=your_academic_cloud_key_here
-ACADEMIC_CLOUD_BASE_URL=https://chat-ai.academiccloud.de/v1
-ACADEMIC_CLOUD_MODEL=llama-3.3-70b-instruct
+AI_PROVIDER=claude
+CLAUDE_API_KEY=your_claude_api_key_here
+CLAUDE_BASE_URL=https://api.anthropic.com
+CLAUDE_MODEL=claude-sonnet-4-20250514
 ```
 
 If you want a template, use `.env.example`.

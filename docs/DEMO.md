@@ -26,7 +26,7 @@ Show:
 
 - The answer appears in natural language.
 - The trace includes `route_building`, `search_context`, `model_synthesis`, and `citations`.
-- `model_synthesis` means Academic Cloud synthesized the final answer from retrieved evidence.
+- `model_synthesis` means Claude synthesized the final answer from retrieved evidence.
 
 ## 3. Ask A Prioritization Question
 

@@ -96,7 +96,7 @@ const nodes: FlowNode[] = [
   },
   {
     id: "model",
-    title: "Academic Cloud",
+    title: "Claude",
     eyebrow: "AI synthesis",
     x: 49,
     y: 67,
